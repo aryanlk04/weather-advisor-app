@@ -12,10 +12,6 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="expanded"
 )
-
-st.title("🩺 Health Advisory App")
-st.subheader("Stay safe & healthy based on your local weather")
-
 # -------------------- Database Setup --------------------
 conn = sqlite3.connect("database.db", check_same_thread=False)
 cursor = conn.cursor()
@@ -126,3 +122,4 @@ else:
                 st.rerun()
             else:
                 st.error("❌ Invalid email or password!")
+
