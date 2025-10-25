@@ -2,13 +2,24 @@ import streamlit as st
 import sqlite3
 from datetime import datetime
 import bcrypt
-from weather_utils import get_weather, weather_suggestion
+from weather_utils import get_weather, health_advice
+from PIL import Image
 
-# -------------------- Database Connection --------------------
+# -------------------- Page Config --------------------
+st.set_page_config(
+    page_title="Health Advisor 🌤",
+    page_icon="🩺",
+    layout="centered",
+    initial_sidebar_state="expanded"
+)
+
+st.title("🩺 Health Advisory App")
+st.subheader("Stay safe & healthy based on your local weather")
+
+# -------------------- Database Setup --------------------
 conn = sqlite3.connect("database.db", check_same_thread=False)
 cursor = conn.cursor()
 
-# -------------------- Create Tables if they don't exist --------------------
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,33 +46,34 @@ if 'logged_in' not in st.session_state:
     st.session_state['user_id'] = None
     st.session_state['email'] = None
 
-# -------------------- Page Title --------------------
-st.set_page_config(page_title="Weather Advisor", page_icon="🌤", layout="centered")
-st.title("🌤 Weather Advisory App")
-
-# -------------------- Dashboard for Logged-in Users --------------------
+# -------------------- Logged-in User --------------------
 if st.session_state['logged_in']:
     st.success(f"Welcome back, {st.session_state['email']}!")
 
-    # City input and output
+    # City input
     weather_placeholder = st.empty()
     city = st.text_input("Enter your city:")
 
-    if st.button("Check Weather"):
+    if st.button("Check Health Advice"):
         if city.strip() == "":
-            weather_placeholder.warning("Please enter a city name.")
+            weather_placeholder.warning("⚠️ Please enter a city name.")
         else:
             weather = get_weather(city.strip())
             if weather:
-                with weather_placeholder.container():
-                    st.write(f"🌡 Temperature: {weather['temp']}°C")
-                    st.write(f"💧 Humidity: {weather['humidity']}%")
-                    st.write(f"☁️ Condition: {weather['condition'].capitalize()}")
+                advice = health_advice(weather['temp'], weather['humidity'], weather['condition'])
 
-                    suggestions = weather_suggestion(weather['temp'], weather['humidity'])
-                    st.subheader("Suggestions:")
-                    for s in suggestions:
-                        st.info(s)
+                with weather_placeholder.container():
+                    # Columns for metrics
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric(label="🌡 Temperature (°C)", value=weather['temp'])
+                        st.metric(label="💧 Humidity (%)", value=weather['humidity'])
+                    with col2:
+                        st.info(f"☁️ Condition: {weather['condition'].capitalize()}")
+
+                    st.subheader("💡 Health Recommendations:")
+                    for tip in advice:
+                        st.success(tip)
 
                     # Save or update user preference
                     cursor.execute("SELECT * FROM preferences WHERE user_id=?", (st.session_state['user_id'],))
@@ -73,7 +85,6 @@ if st.session_state['logged_in']:
             else:
                 weather_placeholder.error("❌ City not found or API error. Check spelling or API key.")
 
-    # Logout button
     if st.button("Logout"):
         st.session_state['logged_in'] = False
         st.session_state['user_id'] = None
@@ -90,7 +101,7 @@ else:
         if st.button("Sign Up"):
             cursor.execute("SELECT * FROM users WHERE email=?", (email,))
             if cursor.fetchone():
-                st.error("Email already registered! Try logging in.")
+                st.error("❌ Email already registered! Try logging in.")
             else:
                 password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
                 cursor.execute(
@@ -114,5 +125,4 @@ else:
                 conn.commit()
                 st.rerun()
             else:
-                st.error("Invalid email or password!")
-
+                st.error("❌ Invalid email or password!")
