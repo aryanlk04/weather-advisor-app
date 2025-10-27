@@ -1,133 +1,103 @@
 import streamlit as st
 import sqlite3
 import requests
-import sendgrid
-from sendgrid.helpers.mail import Mail
+import re
 from datetime import datetime
 
-# -----------------------------
-# Database setup
-# -----------------------------
-def init_db():
-    conn = sqlite3.connect("users.db")
-    c = conn.cursor()
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            username TEXT,
-            email TEXT,
-            password TEXT,
-            city TEXT,
-            last_temp REAL,
-            last_humidity REAL
-        )
-    """)
-    conn.commit()
-    conn.close()
+# -------------------- DATABASE SETUP --------------------
+conn = sqlite3.connect('users.db')
+c = conn.cursor()
+c.execute('''CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE,
+                email TEXT,
+                password TEXT
+            )''')
+conn.commit()
 
-init_db()
-
-# -----------------------------
-# Email validation (diagnostic version)
-# -----------------------------
+# -------------------- EMAIL VALIDATION --------------------
 def validate_email(email):
-    try:
-        api_key = st.secrets["EMAIL_VALIDATION_KEY"]
-        url = f"https://emailvalidation.abstractapi.com/v1/?api_key={api_key}&email={email}"
-        response = requests.get(url)
-        data = response.json()
-
-        # Diagnostic output
-        st.write("🔍 API Response:", data)
-
-        is_valid_format = data.get("is_valid_format", {}).get("value", False)
-        is_disposable = data.get("is_disposable_email", {}).get("value", True)
-        is_deliverable = data.get("deliverability", "") == "DELIVERABLE"
-
-        if is_valid_format and not is_disposable and is_deliverable:
-            return True
-        else:
-            return False
-    except Exception as e:
-        st.error(f"Error during email validation: {e}")
+    # Check for proper email structure
+    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
         return False
 
-# -----------------------------
-# SendGrid email sender
-# -----------------------------
-def send_email(to_email, subject, message):
-    try:
-        sg = sendgrid.SendGridAPIClient(api_key=st.secrets["SENDGRID_API_KEY"])
-        email = Mail(
-            from_email=(st.secrets["SENDER_EMAIL"], st.secrets["SENDER_NAME"]),
-            to_emails=to_email,
-            subject=subject,
-            html_content=message
-        )
-        sg.send(email)
-    except Exception as e:
-        st.error(f"Email sending failed: {e}")
+    # Block disposable domains
+    disposable_domains = ["tempmail", "10minutemail", "guerrillamail", "yopmail"]
+    if any(d in email.lower() for d in disposable_domains):
+        return False
 
-# -----------------------------
-# Weather fetcher
-# -----------------------------
-def get_weather(city):
+    # Allow only common valid domains
+    valid_domains = ["gmail.com", "outlook.com", "yahoo.com", "hotmail.com", "icloud.com"]
+    if not any(email.lower().endswith(domain) for domain in valid_domains):
+        return False
+
+    return True
+
+# -------------------- USER AUTH FUNCTIONS --------------------
+def signup_user(username, email, password):
     try:
-        api_key = st.secrets["OPENWEATHER_API_KEY"]
-        url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
-        data = requests.get(url).json()
-        if data.get("cod") != 200:
-            st.error("City not found. Please check the name.")
-            return None
-        return {
-            "temp": data["main"]["temp"],
-            "humidity": data["main"]["humidity"],
-            "description": data["weather"][0]["description"].capitalize()
-        }
-    except Exception as e:
-        st.error(f"Weather data error: {e}")
+        c.execute("INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
+                  (username, email, password))
+        conn.commit()
+        return True
+    except:
+        return False
+
+def login_user(username, password):
+    c.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+    return c.fetchone()
+
+# -------------------- WEATHER FETCH FUNCTION --------------------
+def get_weather(city):
+    api_key = st.secrets["OPENWEATHER_API_KEY"]
+    base_url = "https://api.openweathermap.org/data/2.5/weather"
+    params = {"q": city, "appid": api_key, "units": "metric"}
+    response = requests.get(base_url, params=params)
+    if response.status_code == 200:
+        return response.json()
+    else:
         return None
 
-# -----------------------------
-# Health advice generator
-# -----------------------------
-def get_health_advice(temp, humidity, desc):
+# -------------------- HEALTH ADVICE --------------------
+def health_advice(temp, humidity, air_quality):
     advice = []
+
+    # Temperature advice
     if temp > 35:
-        advice.append("🥵 Stay hydrated and avoid going out in the afternoon sun.")
-        advice.append("🧴 Apply sunscreen SPF 30+ when outdoors.")
-        advice.append("🧢 Wear light, breathable clothing.")
+        advice.append("🔥 It's extremely hot! Stay hydrated and avoid going out during peak sun hours.")
+        advice.append("Use sunscreen (SPF 30+) and wear light cotton clothes.")
+    elif temp > 25:
+        advice.append("☀️ Warm weather! Drink plenty of water and wear breathable fabrics.")
     elif temp < 10:
-        advice.append("🧥 Dress warmly in layers.")
-        advice.append("☕ Drink warm fluids to maintain body temperature.")
+        advice.append("❄️ It's quite cold! Dress warmly and keep your skin moisturized.")
     else:
-        advice.append("😊 The temperature is comfortable for most activities.")
+        advice.append("🌤️ Mild temperature — great weather! Maintain regular hydration.")
 
+    # Humidity advice
     if humidity > 80:
-        advice.append("💧 High humidity detected — use an anti-fungal powder to prevent rashes.")
-        advice.append("😷 Consider using an N95 mask if you have breathing issues.")
+        advice.append("💧 High humidity detected — use an anti-fungal powder and stay in ventilated spaces.")
     elif humidity < 30:
-        advice.append("🌵 Low humidity — apply moisturizer to prevent dry skin.")
+        advice.append("🌵 Dry air — use moisturizer and stay hydrated to prevent dry skin and lips.")
 
-    if "rain" in desc.lower():
-        advice.append("🌧 Carry an umbrella and waterproof footwear.")
-    elif "dust" in desc.lower() or "smoke" in desc.lower():
-        advice.append("😷 Air quality may be poor — use a mask outdoors.")
+    # Air Quality advice (simplified)
+    if air_quality > 100:
+        advice.append("😷 Poor air quality — consider wearing an N95 mask outdoors.")
+    else:
+        advice.append("🌬️ Air quality looks good today!")
 
     return advice
 
-# -----------------------------
-# Streamlit UI
-# -----------------------------
+# -------------------- MAIN APP --------------------
+st.set_page_config(page_title="Health Advisor", layout="centered")
+
 st.title("🏥 Health Advisor App")
 
 menu = ["Login", "Sign Up"]
 choice = st.sidebar.selectbox("Menu", menu)
 
-conn = sqlite3.connect("users.db")
-c = conn.cursor()
-
+# -------------------- SIGNUP --------------------
 if choice == "Sign Up":
-    st.subheader("Create Account")
+    st.subheader("Create New Account")
 
     username = st.text_input("Username")
     email = st.text_input("Email")
@@ -135,17 +105,13 @@ if choice == "Sign Up":
 
     if st.button("Sign Up"):
         if not validate_email(email):
-            st.error("⚠️ Please provide a real or non-disposable email.")
+            st.error("❌ Please enter a valid, non-temporary email (e.g., Gmail, Outlook, Yahoo).")
+        elif signup_user(username, email, password):
+            st.success("✅ Account created successfully! You can now log in.")
         else:
-            c.execute("SELECT * FROM users WHERE username=?", (username,))
-            if c.fetchone():
-                st.warning("Username already exists. Try a different one.")
-            else:
-                c.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)",
-                          (username, email, password, None, None, None))
-                conn.commit()
-                st.success("✅ Account created successfully! Please log in.")
+            st.error("⚠️ Username already exists. Try another.")
 
+# -------------------- LOGIN --------------------
 elif choice == "Login":
     st.subheader("Login to Your Account")
 
@@ -153,45 +119,28 @@ elif choice == "Login":
     password = st.text_input("Password", type="password")
 
     if st.button("Login"):
-        c.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
-        user = c.fetchone()
+        user = login_user(username, password)
         if user:
-            st.success(f"Welcome, {username}!")
+            st.success(f"Welcome back, {username}! 🎉")
+
             city = st.text_input("Enter your city:")
-            if st.button("Check Weather"):
-                weather = get_weather(city)
-                if weather:
-                    temp = weather["temp"]
-                    humidity = weather["humidity"]
-                    desc = weather["description"]
+            if city:
+                weather_data = get_weather(city)
+                if weather_data:
+                    st.subheader(f"🌍 Weather in {city.capitalize()} ({datetime.now().strftime('%d %b %Y')})")
 
-                    st.metric("🌡 Temperature", f"{temp} °C")
-                    st.metric("💧 Humidity", f"{humidity} %")
-                    st.write("🌦 Condition:", desc)
+                    temp = weather_data["main"]["temp"]
+                    humidity = weather_data["main"]["humidity"]
+                    air_quality = 75  # Placeholder value (you can integrate a real AQI API later)
 
-                    advice = get_health_advice(temp, humidity, desc)
-                    st.subheader("🩺 Health Advice:")
-                    for tip in advice:
-                        st.write("-", tip)
+                    st.write(f"**Temperature:** {temp} °C")
+                    st.write(f"**Humidity:** {humidity}%")
+                    st.write(f"**Air Quality Index (approx):** {air_quality}")
 
-                    # Send email alert
-                    email_body = f"""
-                    <h3>Health Update for {city}</h3>
-                    <p><b>Temperature:</b> {temp} °C</p>
-                    <p><b>Humidity:</b> {humidity} %</p>
-                    <p><b>Condition:</b> {desc}</p>
-                    <p><b>Health Tips:</b></p>
-                    <ul>{''.join(f'<li>{tip}</li>' for tip in advice)}</ul>
-                    <p>Stay safe and healthy!<br>— Health Advisor</p>
-                    """
-                    send_email(user[1], f"Your Health Advisory for {city}", email_body)
-                    st.success("📧 Health update sent to your registered email!")
-
-                    # Save city and last weather
-                    c.execute("UPDATE users SET city=?, last_temp=?, last_humidity=? WHERE username=?",
-                              (city, temp, humidity, username))
-                    conn.commit()
+                    st.subheader("🩺 Health Advice")
+                    for tip in health_advice(temp, humidity, air_quality):
+                        st.write(f"- {tip}")
+                else:
+                    st.error("City not found! Please try again.")
         else:
             st.error("Invalid username or password.")
-
-conn.close()
