@@ -75,11 +75,11 @@ def health_advice(temp, humidity, air_quality):
 
     # Humidity advice
     if humidity > 80:
-        advice.append("💧 High humidity detected — use an anti-fungal powder and stay in ventilated spaces.")
+        advice.append("💧 High humidity detected — use anti-fungal powder and stay in ventilated spaces.")
     elif humidity < 30:
         advice.append("🌵 Dry air — use moisturizer and stay hydrated to prevent dry skin and lips.")
 
-    # Air Quality advice (simplified)
+    # Air Quality advice (placeholder)
     if air_quality > 100:
         advice.append("😷 Poor air quality — consider wearing an N95 mask outdoors.")
     else:
@@ -124,23 +124,26 @@ elif choice == "Login":
             st.success(f"Welcome back, {username}! 🎉")
 
             city = st.text_input("Enter your city:")
-            if city:
-                weather_data = get_weather(city)
-                if weather_data:
-                    st.subheader(f"🌍 Weather in {city.capitalize()} ({datetime.now().strftime('%d %b %Y')})")
-
-                    temp = weather_data["main"]["temp"]
-                    humidity = weather_data["main"]["humidity"]
-                    air_quality = 75  # Placeholder value (you can integrate a real AQI API later)
-
-                    st.write(f"**Temperature:** {temp} °C")
-                    st.write(f"**Humidity:** {humidity}%")
-                    st.write(f"**Air Quality Index (approx):** {air_quality}")
-
-                    st.subheader("🩺 Health Advice")
-                    for tip in health_advice(temp, humidity, air_quality):
-                        st.write(f"- {tip}")
+            if st.button("Check Weather"):
+                if city.strip() == "":
+                    st.warning("Please enter a city name before checking.")
                 else:
-                    st.error("City not found! Please try again.")
+                    weather_data = get_weather(city)
+                    if weather_data:
+                        st.subheader(f"🌍 Weather in {city.capitalize()} ({datetime.now().strftime('%d %b %Y')})")
+
+                        temp = weather_data["main"]["temp"]
+                        humidity = weather_data["main"]["humidity"]
+                        air_quality = 75  # Placeholder value
+
+                        st.write(f"**Temperature:** {temp} °C")
+                        st.write(f"**Humidity:** {humidity}%")
+                        st.write(f"**Air Quality Index (approx):** {air_quality}")
+
+                        st.subheader("🩺 Health Advice")
+                        for tip in health_advice(temp, humidity, air_quality):
+                            st.write(f"- {tip}")
+                    else:
+                        st.error("City not found! Please try again.")
         else:
             st.error("Invalid username or password.")
