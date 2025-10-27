@@ -1,74 +1,80 @@
 import requests
 import streamlit as st
 
-# API key stored securely in Streamlit Secrets
+# Read OpenWeatherMap API key from secrets
 API_KEY = st.secrets["OPENWEATHER_API_KEY"]
 
 def get_weather(city):
     """
-    Fetch weather data from OpenWeatherMap API for the given city.
-    Returns a dictionary with temperature, humidity, and condition.
+    Returns dict: { temp: float, humidity: int, condition: str } or None on error.
     """
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={API_KEY}&units=metric"
+    url = f"http://api.openweathermap.org/data/2.5/weather"
+    params = {"q": city, "appid": API_KEY, "units": "metric"}
     try:
-        response = requests.get(url)
-        data = response.json()
+        r = requests.get(url, params=params, timeout=10)
+        data = r.json()
         if "main" in data:
-            temp = data["main"]["temp"]
-            humidity = data["main"]["humidity"]
-            condition = data["weather"][0]["description"]
-            return {"temp": temp, "humidity": humidity, "condition": condition}
+            return {
+                "temp": float(data["main"]["temp"]),
+                "humidity": int(data["main"]["humidity"]),
+                "condition": data["weather"][0]["description"],
+            }
         else:
             return None
     except Exception as e:
-        print("Error fetching weather:", e)
+        print("Weather fetch error:", e)
         return None
 
+
 def health_advice(temp, humidity, condition):
-    """
-    Returns detailed health recommendations based on temperature, humidity, and weather.
-    """
+    """Return list of actionable health tips based on weather."""
     advice = []
 
-    # Temperature-based advice
+    # Temperature guidance
     if temp >= 40:
-        advice.append("🔥 Extreme heat! Stay indoors during peak hours, drink plenty of water, and apply sunscreen SPF 50+.")
-        advice.append("🧢 Wear a wide-brim hat and light, breathable clothing.")
+        advice += [
+            "🔥 Extreme heat: stay indoors during peak hours, drink plenty of water, and apply sunscreen SPF 50+.",
+            "🧢 Wear a wide-brim hat and light, breathable clothing; avoid strenuous outdoor activity."
+        ]
     elif 35 <= temp < 40:
-        advice.append("☀️ Very hot: stay hydrated, avoid direct sunlight, use sunscreen SPF 30+.")
-        advice.append("👕 Wear light-colored, loose clothing.")
+        advice += [
+            "☀️ Very hot: stay hydrated, avoid direct sunlight, apply sunscreen SPF 30+.",
+            "👕 Wear light-colored, loose clothing."
+        ]
     elif 30 <= temp < 35:
-        advice.append("🌤 Hot weather: limit outdoor activity during midday, use sunscreen.")
+        advice.append("🌤 Hot: limit outdoor activity during midday and stay hydrated.")
     elif 20 <= temp < 30:
-        advice.append("🌤 Moderate weather: normal precautions, stay hydrated.")
+        advice.append("🌤 Comfortable: follow usual precautions and stay active.")
     elif 10 <= temp < 20:
-        advice.append("🧥 Mild cold: wear a light jacket, keep skin moisturized.")
-    elif temp < 10:
-        advice.append("❄️ Cold weather: wear warm clothing, cover extremities, use moisturizer for skin protection.")
-        advice.append("🧤 Gloves, scarf, and hat recommended.")
+        advice.append("🧥 Mild cold: wear layers and keep skin moisturized.")
+    else:
+        advice += [
+            "❄️ Cold: wear warm clothing, cover extremities, and use moisturizer to avoid dryness.",
+            "🧤 Wear gloves and hat in very low temperatures."
+        ]
 
-    # Humidity-based advice
+    # Humidity guidance
     if humidity > 80:
-        advice.append("💧 High humidity: stay hydrated, risk of fungal or skin irritation increases.")
+        advice.append("💧 High humidity: risk of fungal/skin irritation increases — keep skin dry and clean.")
     elif humidity < 30:
-        advice.append("💨 Low humidity: apply moisturizer, drink plenty of water to avoid dehydration.")
+        advice.append("💨 Low humidity: use moisturizer and drink more water to prevent dehydration/dry skin.")
 
-    # Weather condition advice
-    condition_lower = condition.lower()
-    if any(word in condition_lower for word in ["smoke", "dust", "haze"]):
-        advice.append("😷 Air pollution detected: wear N95 mask outdoors, avoid heavy outdoor exercise.")
-    if "rain" in condition_lower:
-        advice.append("☔ Carry an umbrella and wear waterproof shoes/clothes.")
-    if "snow" in condition_lower:
-        advice.append("❄️ Snowy conditions: wear warm waterproof clothing and boots, watch out for icy surfaces.")
-    if "fog" in condition_lower:
-        advice.append("🌫 Foggy weather: drive carefully, use lights if commuting.")
-    if "thunderstorm" in condition_lower or "storm" in condition_lower:
-        advice.append("⚡ Thunderstorm: stay indoors, avoid using electrical appliances outside.")
-    if "wind" in condition_lower:
-        advice.append("💨 Strong wind: secure loose objects and avoid outdoor activities if possible.")
+    # Condition-based recommendations
+    c = (condition or "").lower()
+    if any(x in c for x in ["smoke", "dust", "haze", "sand"]):
+        advice.append("😷 Air pollution/dust: wear an N95 mask outdoors and avoid heavy exercise outside.")
+    if "rain" in c:
+        advice.append("☔ Rain: carry an umbrella and wear water-resistant shoes.")
+    if "snow" in c:
+        advice.append("❄️ Snow/Ice: wear warm waterproof clothing and watch for slippery surfaces.")
+    if "fog" in c:
+        advice.append("🌫 Fog: drive carefully and use lights when commuting.")
+    if "thunder" in c or "storm" in c:
+        advice.append("⚡ Thunderstorms: stay indoors and avoid tall exposed objects.")
+    if "wind" in c:
+        advice.append("💨 Strong wind: secure loose objects and take care in outdoor activities.")
 
     if not advice:
-        advice.append("✅ Weather looks good! Maintain your usual health routine.")
+        advice.append("✅ Weather looks normal — continue your routine and take basic precautions.")
 
     return advice
