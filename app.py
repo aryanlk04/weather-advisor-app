@@ -11,7 +11,7 @@ st.title("🩺 HealthCare Advisor")
 st.write("Get personalized health tips based on your local weather conditions.")
 
 # ---------------------- DATABASE ----------------------
-DB_FILE = "users.db"
+DB_FILE = "/mount/tmp/users.db"
 
 def init_db():
     conn = sqlite3.connect(DB_FILE, check_same_thread=False)
@@ -195,3 +195,4 @@ else:
                 st.experimental_rerun()
             else:
                 st.sidebar.error("Invalid credentials.")
+
