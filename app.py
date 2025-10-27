@@ -160,8 +160,6 @@ else:
         if st.sidebar.button("Create Account"):
             if not email or not password:
                 st.sidebar.error("Please enter both email and password.")
-            elif not is_valid_email(email):
-                st.sidebar.error("Invalid or disposable email address.")
             else:
                 cursor.execute("SELECT id FROM users WHERE email=?", (email,))
                 if cursor.fetchone():
@@ -186,4 +184,5 @@ else:
                 st.rerun()
             else:
                 st.sidebar.error("Invalid credentials.")
+
 
