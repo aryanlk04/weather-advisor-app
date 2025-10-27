@@ -156,6 +156,8 @@ else:
     email = st.sidebar.text_input("Email")
     password = st.sidebar.text_input("Password", type="password")
 
+    conn, cursor = init_db()
+
     if action == "Sign Up":
         if st.sidebar.button("Create Account"):
             if not email or not password:
@@ -184,5 +186,6 @@ else:
                 st.rerun()
             else:
                 st.sidebar.error("Invalid credentials.")
+
 
 
