@@ -139,7 +139,7 @@ if st.session_state['logged_in']:
         st.session_state['logged_in'] = False
         st.session_state['user_id'] = None
         st.session_state['email'] = None
-        st.experimental_rerun()
+        st.rerun()
 
 else:
     st.sidebar.header("Create account or login")
@@ -194,6 +194,7 @@ else:
                                 st.info("Auto-alert: " + notify_result)
                             # update last observed weather to current
                             save_user_pref(user[0], pref["city"], w["temp"], w["humidity"])
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.sidebar.error("Invalid credentials.")
+
