@@ -160,7 +160,7 @@ if st.session_state.logged_in:
         st.session_state.logged_in = False
         st.session_state.user_id = None
         st.session_state.email = None
-        st.rerun()
+        st.experimental_rerun()
 
 else:
     st.sidebar.header("Account Access")
@@ -197,6 +197,6 @@ else:
                 st.session_state.email = email
                 cursor.execute("UPDATE users SET last_login=? WHERE id=?", (str(datetime.now()), user[0]))
                 conn.commit()
-                st.rerun()
+                st.experimental_rerun()
             else:
                 st.sidebar.error("Invalid email or password.")
