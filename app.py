@@ -186,7 +186,7 @@ else:
 
     elif action == "Login":
         if st.sidebar.button("Login"):
-            cursor.execute("SELECT id, password_hash FROM users WHERE email=?", (email,))
+            cursor.execute("SELECT *, password_hash FROM users WHERE email=?", (email,))
             user = cursor.fetchone()
             if user and bcrypt.checkpw(password.encode(), user[1]):
                 st.session_state.logged_in = True
@@ -197,3 +197,4 @@ else:
                 st.rerun()
             else:
                 st.sidebar.error("Invalid credentials.")
+
