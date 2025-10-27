@@ -40,17 +40,6 @@ def init_db():
 
 conn, cursor = init_db()
 
-# ---------------------- EMAIL VALIDATION ----------------------
-def is_valid_email(email):
-    """Simple local validation (no API)."""
-    pattern = r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
-    banned_domains = ["tempmail", "mailinator", "yopmail", "guerrillamail"]
-    if not re.match(pattern, email):
-        return False
-    if any(b in email.lower() for b in banned_domains):
-        return False
-    return True
-
 # ---------------------- WEATHER API ----------------------
 def get_weather(city):
     """Fetch weather data using OpenWeather API."""
@@ -197,3 +186,4 @@ else:
                 st.rerun()
             else:
                 st.sidebar.error("Invalid credentials.")
+
