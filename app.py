@@ -4,17 +4,19 @@ from datetime import datetime
 import bcrypt
 import requests
 import re
+import os
 
 # -------------------- STREAMLIT CONFIG --------------------
-st.set_page_config(page_title="Health Advisor", page_icon="🩺", layout="centered")
+st.set_page_config(page_title="HealthCare Advisor", page_icon="🩺", layout="centered")
 st.title("🩺 HealthCare Advisor")
 st.write("Get personalized health guidance based on your city’s weather!")
 
 # -------------------- DATABASE SETUP --------------------
-conn = sqlite3.connect("users.db", check_same_thread=False)
+DB_PATH = "users.db"
+conn = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = conn.cursor()
 
-# User table
+# Ensure tables exist before any queries
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,7 +27,6 @@ CREATE TABLE IF NOT EXISTS users (
 )
 """)
 
-# Preferences table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS preferences (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,16 +41,15 @@ conn.commit()
 
 # -------------------- LOCAL EMAIL VALIDATION --------------------
 def is_valid_email(email: str) -> bool:
-    """Check for valid format and block disposable domains."""
+    """Check if email looks valid and not disposable."""
     if not email:
         return False
     pattern = r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
     if not re.match(pattern, email):
         return False
 
-    # Block disposable / fake domains
-    blocked = ["tempmail", "10minutemail", "guerrillamail", "mailinator", "yopmail"]
-    if any(b in email.lower() for b in blocked):
+    blocked_domains = ["tempmail", "10minutemail", "guerrillamail", "mailinator", "yopmail"]
+    if any(b in email.lower() for b in blocked_domains):
         return False
 
     return True
@@ -60,49 +60,49 @@ def get_weather(city):
     try:
         api_key = st.secrets["OPENWEATHER_API_KEY"]
         url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
-        r = requests.get(url)
-        if r.status_code == 200:
-            data = r.json()
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
             return {
                 "temp": data["main"]["temp"],
                 "humidity": data["main"]["humidity"],
                 "condition": data["weather"][0]["description"]
             }
     except Exception as e:
-        print("Error:", e)
+        print("Weather API Error:", e)
     return None
 
-# -------------------- HEALTH ADVICE FUNCTION --------------------
+# -------------------- HEALTH ADVICE --------------------
 def health_advice(temp, humidity, condition):
     advice = []
-    # Temperature-based
+    # Temperature-based advice
     if temp >= 35:
         advice += [
-            "🥵 It's very hot! Stay hydrated and avoid outdoor activity in afternoon.",
-            "Use SPF 30+ sunscreen.",
-            "Wear light, breathable clothes."
+            "🥵 It's extremely hot! Stay hydrated and avoid outdoor activity during midday.",
+            "Use SPF 30+ sunscreen to protect your skin.",
+            "Wear light, breathable clothing."
         ]
     elif temp <= 10:
         advice += [
-            "❄️ It's cold! Dress warmly in layers.",
+            "❄️ It's cold! Dress warmly and keep your hands and feet covered.",
             "Use moisturizer to prevent dry skin."
         ]
     else:
-        advice.append("😊 Comfortable temperature! Maintain hydration and a balanced diet.")
+        advice.append("😊 Pleasant temperature! Stay hydrated and maintain a balanced diet.")
 
-    # Humidity-based
+    # Humidity-based advice
     if humidity > 80:
-        advice.append("💧 High humidity — keep rooms ventilated and avoid damp areas.")
+        advice.append("💧 High humidity — keep your environment well-ventilated and avoid dampness.")
     elif humidity < 30:
-        advice.append("🌵 Dry air — apply moisturizer and drink plenty of water.")
+        advice.append("🌵 Dry air — use moisturizer and drink plenty of water.")
 
-    # Condition-based
+    # Weather condition advice
     if "rain" in condition.lower():
-        advice.append("☔ Rainy weather — carry an umbrella and avoid getting wet.")
+        advice.append("☔ It's raining — carry an umbrella and avoid getting drenched.")
     if "haze" in condition.lower() or "smoke" in condition.lower():
-        advice.append("😷 Air quality alert — wear a mask when outdoors.")
+        advice.append("😷 Poor air quality — wear a mask when going outdoors.")
     if "snow" in condition.lower():
-        advice.append("❄️ Snowy — wear insulated footwear to prevent slips.")
+        advice.append("❄️ Snowy conditions — wear insulated footwear and stay warm.")
 
     return advice
 
@@ -130,9 +130,8 @@ if "logged_in" not in st.session_state:
 
 # -------------------- MAIN APP --------------------
 if st.session_state.logged_in:
-    st.success(f"Welcome, {st.session_state.email} 👋")
+    st.success(f"Welcome, {st.session_state.email}! 👋")
 
-    # Load saved city
     saved_city = get_preference(st.session_state.user_id)
     city = st.text_input("Enter your city:", value=saved_city)
 
@@ -142,7 +141,7 @@ if st.session_state.logged_in:
         else:
             weather = get_weather(city.strip())
             if not weather:
-                st.error("City not found or API error. Try again.")
+                st.error("City not found or API issue. Please try again.")
             else:
                 st.subheader(f"🌍 Weather in {city.capitalize()}")
                 st.metric("Temperature (°C)", weather["temp"])
@@ -153,7 +152,7 @@ if st.session_state.logged_in:
                 for tip in health_advice(weather["temp"], weather["humidity"], weather["condition"]):
                     st.write(f"- {tip}")
 
-                # Save latest weather
+                # Save user preference
                 save_preference(st.session_state.user_id, city, weather["temp"], weather["humidity"])
 
     if st.button("Logout"):
