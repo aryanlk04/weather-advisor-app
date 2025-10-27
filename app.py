@@ -12,34 +12,37 @@ st.title("🩺 HealthCare Advisor")
 st.write("Get personalized health guidance based on your city’s weather!")
 
 # -------------------- DATABASE SETUP --------------------
-DB_PATH = "users.db"
-conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-cursor = conn.cursor()
+DB_PATH = "database.db"
 
-# Ensure tables exist before any queries
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE NOT NULL,
-    password_hash BLOB NOT NULL,
-    signup_date TEXT,
-    last_login TEXT
-)
-""")
+# Ensure DB and tables exist before anything else
+def init_db():
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        password_hash BLOB NOT NULL,
+        signup_date TEXT,
+        last_login TEXT
+    )
+    """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS preferences (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        city TEXT,
+        last_temp REAL,
+        last_humidity REAL,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    )
+    """)
+    conn.commit()
+    return conn, cursor
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS preferences (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    city TEXT,
-    last_temp REAL,
-    last_humidity REAL,
-    FOREIGN KEY(user_id) REFERENCES users(id)
-)
-""")
-conn.commit()
+conn, cursor = init_db()
 
-# -------------------- LOCAL EMAIL VALIDATION --------------------
+# -------------------- EMAIL VALIDATION --------------------
 def is_valid_email(email: str) -> bool:
     """Check if email looks valid and not disposable."""
     if not email:
@@ -75,7 +78,6 @@ def get_weather(city):
 # -------------------- HEALTH ADVICE --------------------
 def health_advice(temp, humidity, condition):
     advice = []
-    # Temperature-based advice
     if temp >= 35:
         advice += [
             "🥵 It's extremely hot! Stay hydrated and avoid outdoor activity during midday.",
@@ -90,13 +92,11 @@ def health_advice(temp, humidity, condition):
     else:
         advice.append("😊 Pleasant temperature! Stay hydrated and maintain a balanced diet.")
 
-    # Humidity-based advice
     if humidity > 80:
         advice.append("💧 High humidity — keep your environment well-ventilated and avoid dampness.")
     elif humidity < 30:
         advice.append("🌵 Dry air — use moisturizer and drink plenty of water.")
 
-    # Weather condition advice
     if "rain" in condition.lower():
         advice.append("☔ It's raining — carry an umbrella and avoid getting drenched.")
     if "haze" in condition.lower() or "smoke" in condition.lower():
@@ -107,20 +107,29 @@ def health_advice(temp, humidity, condition):
     return advice
 
 # -------------------- DATABASE HELPERS --------------------
-def save_preference(user_id, city, temp, humidity):
-    cursor.execute("SELECT * FROM preferences WHERE user_id=?", (user_id,))
-    if cursor.fetchone():
-        cursor.execute("UPDATE preferences SET city=?, last_temp=?, last_humidity=? WHERE user_id=?",
-                       (city, temp, humidity, user_id))
-    else:
-        cursor.execute("INSERT INTO preferences(user_id, city, last_temp, last_humidity) VALUES (?, ?, ?, ?)",
-                       (user_id, city, temp, humidity))
-    conn.commit()
+def safe_query(query, params=()):
+    """Executes queries safely after ensuring tables exist."""
+    try:
+        cursor.execute(query, params)
+        conn.commit()
+    except sqlite3.OperationalError as e:
+        st.warning("Reinitializing database (tables missing)...")
+        init_db()
+        cursor.execute(query, params)
+        conn.commit()
 
 def get_preference(user_id):
+    safe_query("CREATE TABLE IF NOT EXISTS preferences (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, city TEXT, last_temp REAL, last_humidity REAL, FOREIGN KEY(user_id) REFERENCES users(id))")
     cursor.execute("SELECT city FROM preferences WHERE user_id=?", (user_id,))
     r = cursor.fetchone()
     return r[0] if r else ""
+
+def save_preference(user_id, city, temp, humidity):
+    cursor.execute("SELECT * FROM preferences WHERE user_id=?", (user_id,))
+    if cursor.fetchone():
+        safe_query("UPDATE preferences SET city=?, last_temp=?, last_humidity=? WHERE user_id=?", (city, temp, humidity, user_id))
+    else:
+        safe_query("INSERT INTO preferences(user_id, city, last_temp, last_humidity) VALUES (?, ?, ?, ?)", (user_id, city, temp, humidity))
 
 # -------------------- SESSION MANAGEMENT --------------------
 if "logged_in" not in st.session_state:
@@ -152,7 +161,6 @@ if st.session_state.logged_in:
                 for tip in health_advice(weather["temp"], weather["humidity"], weather["condition"]):
                     st.write(f"- {tip}")
 
-                # Save user preference
                 save_preference(st.session_state.user_id, city, weather["temp"], weather["humidity"])
 
     if st.button("Logout"):
@@ -175,27 +183,32 @@ else:
             elif not is_valid_email(email):
                 st.sidebar.error("Please enter a valid, non-disposable email.")
             else:
-                cursor.execute("SELECT id FROM users WHERE email=?", (email,))
+                try:
+                    cursor.execute("SELECT id FROM users WHERE email=?", (email,))
+                except sqlite3.OperationalError:
+                    init_db()
+                    cursor.execute("SELECT id FROM users WHERE email=?", (email,))
                 if cursor.fetchone():
                     st.sidebar.error("Email already registered.")
                 else:
                     pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-                    cursor.execute("INSERT INTO users (email, password_hash, signup_date) VALUES (?, ?, ?)",
-                                   (email, pw_hash, str(datetime.now())))
-                    conn.commit()
+                    safe_query("INSERT INTO users (email, password_hash, signup_date) VALUES (?, ?, ?)", (email, pw_hash, str(datetime.now())))
                     st.sidebar.success("✅ Account created! Please log in.")
 
     # ---------- LOGIN ----------
     elif choice == "Login":
         if st.sidebar.button("Login"):
-            cursor.execute("SELECT id, password_hash FROM users WHERE email=?", (email,))
+            try:
+                cursor.execute("SELECT id, password_hash FROM users WHERE email=?", (email,))
+            except sqlite3.OperationalError:
+                init_db()
+                cursor.execute("SELECT id, password_hash FROM users WHERE email=?", (email,))
             user = cursor.fetchone()
             if user and bcrypt.checkpw(password.encode(), user[1]):
                 st.session_state.logged_in = True
                 st.session_state.user_id = user[0]
                 st.session_state.email = email
-                cursor.execute("UPDATE users SET last_login=? WHERE id=?", (str(datetime.now()), user[0]))
-                conn.commit()
+                safe_query("UPDATE users SET last_login=? WHERE id=?", (str(datetime.now()), user[0]))
                 st.experimental_rerun()
             else:
                 st.sidebar.error("Invalid email or password.")
