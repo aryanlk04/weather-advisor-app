@@ -10,34 +10,57 @@ st.set_page_config(page_title="Health Advisor 🌤", page_icon="🩺", layout="c
 # -------------------- CUSTOM CSS --------------------
 st.markdown("""
     <style>
+    /* Overall background and font styling */
     body {
-        background-color: #f8fafc;
+        background-color: #f7f9fb;
         font-family: 'Segoe UI', sans-serif;
     }
-    .nav-container {
+
+    /* Navigation bar styling */
+    .topnav {
+        background: linear-gradient(90deg, #5ec576, #4ba3e3);
+        overflow: hidden;
         text-align: center;
+        padding: 15px 10px;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         margin-bottom: 30px;
     }
-    .nav-button {
-        background: linear-gradient(90deg, #4ba3e3, #5ec576);
+
+    .topnav a {
+        display: inline-block;
         color: white;
-        border: none;
+        text-align: center;
         padding: 10px 25px;
-        font-size: 18px;
+        text-decoration: none;
+        font-size: 19px;
         font-weight: 600;
-        border-radius: 8px;
-        margin: 0 10px;
-        cursor: pointer;
         transition: all 0.3s ease;
+        border-radius: 5px;
     }
-    .nav-button:hover {
+
+    .topnav a:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        color: #fff;
         transform: scale(1.05);
-        opacity: 0.9;
     }
+
     .active {
-        background: linear-gradient(90deg, #2196F3, #4CAF50);
-        box-shadow: 0 0 15px rgba(72, 239, 128, 0.8);
-        transform: scale(1.05);
+        background-color: rgba(255, 255, 255, 0.3);
+        color: #fff !important;
+        font-weight: bold;
+        border-radius: 6px;
+    }
+
+    /* Horizontal line styling */
+    hr {
+        border: 1px solid #e0e0e0;
+        margin-bottom: 20px;
+    }
+
+    /* Center align buttons */
+    .center {
+        text-align: center;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -206,3 +229,4 @@ elif st.session_state.page == "Contact":
     **Email:** support@healthadvisor.ai  
     **Address:** HealthTech Street, Bengaluru, India  
     """)
+
