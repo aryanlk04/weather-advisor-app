@@ -96,9 +96,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# -------------------- Navigation --------------------
-st.sidebar.title("🌐 Navigation")
-page = st.sidebar.radio("Go to", ["Home", "About", "Contact"])
+# ------------------ NAVIGATION ------------------
+st.markdown("""
+    <div class='nav'>
+        <a href='#home'>🏠 Home</a>
+        <a href='#about'>💬 About</a>
+        <a href='#contact'>📞 Contact</a>
+    </div>
+""", unsafe_allow_html=True)
 # ------------------ HEADER ------------------
 st.markdown("<h1 class='main-title' id='home'>🩺 HealthCare Advisor</h1>", unsafe_allow_html=True)
 st.markdown("<p class='subtitle'>Personalized health insights based on your local weather conditions.</p>", unsafe_allow_html=True)
@@ -241,6 +246,7 @@ if page == "Contact":
 
     We’re always happy to help you stay healthy and informed! 💙
     """)
+
 
 
 
