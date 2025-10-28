@@ -138,7 +138,12 @@ if 'logged_in' not in st.session_state:
     st.session_state['user_id'] = None
     st.session_state['email'] = None
 
-# -------------------- Logged-in User --------------------
+# -------------------- HOME PAGE --------------------
+if page == "Home":
+    st.title("🩺 Health Advisory App")
+    st.subheader("Stay safe & healthy based on your local weather")
+
+# If logged in
 if st.session_state['logged_in']:
     st.success(f"Welcome back, {st.session_state['email']}!")
 
@@ -216,6 +221,33 @@ else:
                 st.rerun()
             else:
                 st.error("❌ Invalid email or password!")
+                # -------------------- ABOUT PAGE --------------------
+elif page == "About":
+    st.title("💬 About Health Advisor")
+    st.write("""
+    **Health Advisor** helps users make informed health decisions based on their local weather conditions.  
+    It provides personalized advice on:
+    - 🌞 Sun safety and hydration during heatwaves  
+    - ❄️ Protection against cold and dry weather  
+    - 💧 Humidity-based skin and respiratory tips  
+    - 😷 Air quality and pollution precautions  
+
+    This web app integrates live weather data and turns it into simple, practical health guidance so you can stay healthy every day.  
+    """)
+
+# -------------------- CONTACT PAGE --------------------
+elif page == "Contact":
+    st.title("📞 Contact Us")
+    st.write("""
+    For support or inquiries, feel free to reach out:
+
+    - 📱 **Phone:** 90195 31192  
+    - 📧 **Email:** support@healthadvisor.ai  
+    - 🏢 **Address:** HealthTech Street, Bengaluru, India  
+
+    We’re always happy to help you stay healthy and informed! 💙
+    """)
+
 
 
 
