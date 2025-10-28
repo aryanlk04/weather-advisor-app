@@ -216,7 +216,7 @@ else:
             else:
                 st.error("❌ Invalid email or password!")
                 # -------------------- ABOUT PAGE --------------------
-elif page == "About":
+if page == "About":
     st.title("💬 About Health Advisor")
     st.write("""
     **Health Advisor** helps users make informed health decisions based on their local weather conditions.  
@@ -230,7 +230,7 @@ elif page == "About":
     """)
 
 # -------------------- CONTACT PAGE --------------------
-elif page == "Contact":
+if page == "Contact":
     st.title("📞 Contact Us")
     st.write("""
     For support or inquiries, feel free to reach out:
@@ -241,6 +241,7 @@ elif page == "Contact":
 
     We’re always happy to help you stay healthy and informed! 💙
     """)
+
 
 
 
