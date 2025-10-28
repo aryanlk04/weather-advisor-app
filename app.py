@@ -91,30 +91,6 @@ if 'logged_in' not in st.session_state:
     st.session_state['user_id'] = None
     st.session_state['email'] = None
 
-# ------------------ HEALTH ADVICE ------------------
-def health_advice(temp, humidity, condition):
-    tips = []
-    if temp > 32:
-        tips.append("☀️ Stay hydrated and avoid prolonged outdoor activities.")
-    elif temp < 10:
-        tips.append("🧣 Dress warmly to prevent catching a cold.")
-    else:
-        tips.append("😊 Ideal weather for outdoor walks and exercise.")
-
-    if humidity > 80:
-        tips.append("💧 High humidity — keep skin dry to prevent rashes.")
-    elif humidity < 30:
-        tips.append("🌵 Dry air — use moisturizer and stay hydrated.")
-
-    if "rain" in condition.lower():
-        tips.append("☔ Carry an umbrella and wear waterproof shoes.")
-    elif "clear" in condition.lower():
-        tips.append("😎 Use sunscreen while outdoors.")
-    elif "snow" in condition.lower():
-        tips.append("❄️ Keep extremities warm and avoid slippery surfaces.")
-
-    return tips
-
 # -------------------- Logged-in User --------------------
 if st.session_state['logged_in']:
     st.success(f"Welcome back, {st.session_state['email']}!")
@@ -193,4 +169,5 @@ else:
                 st.rerun()
             else:
                 st.error("❌ Invalid email or password!")
+
 
