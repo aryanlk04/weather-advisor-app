@@ -4,17 +4,63 @@ from datetime import datetime
 import bcrypt
 from weather_utils import get_weather, health_advice
 
-# -------------------- Page Config --------------------
-st.set_page_config(
-    page_title="Health Advisor 🌤",
-    page_icon="🩺",
-    layout="centered",
-    initial_sidebar_state="expanded"
-)
+# ------------------ PAGE SETUP ------------------
+st.set_page_config(page_title="HealthCare Advisor", page_icon="🩺", layout="centered")
 
-st.title("🩺 Health Advisory App")
-st.subheader("Stay safe & healthy based on your local weather")
+# Custom CSS for a modern health-themed design
+st.markdown("""
+    <style>
+    /* Background gradient */
+    body {
+        background: linear-gradient(135deg, #e6f0ff 0%, #ffffff 100%);
+        font-family: 'Poppins', sans-serif;
+    }
+    /* Main title */
+    .main-title {
+        text-align: center;
+        color: #0077b6;
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-top: -10px;
+    }
+    /* Sub text */
+    .subtitle {
+        text-align: center;
+        color: #555;
+        font-size: 1rem;
+        margin-bottom: 20px;
+    }
+    /* Card design for weather and health info */
+    .card {
+        background-color: #f0f8ff;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    /* Buttons */
+    div.stButton > button {
+        background-color: #0077b6;
+        color: white;
+        font-weight: 600;
+        border-radius: 8px;
+        padding: 0.6em 1.2em;
+        transition: 0.3s;
+    }
+    div.stButton > button:hover {
+        background-color: #0096c7;
+        transform: scale(1.03);
+    }
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #caf0f8;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
+# ------------------ HEADER ------------------
+st.markdown("<h1 class='main-title'>🩺 HealthCare Advisor</h1>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>Your personal health companion powered by live weather insights.</p>", unsafe_allow_html=True)
 # -------------------- Database Setup --------------------
 conn = sqlite3.connect("database.db", check_same_thread=False)
 cursor = conn.cursor()
@@ -45,12 +91,36 @@ if 'logged_in' not in st.session_state:
     st.session_state['user_id'] = None
     st.session_state['email'] = None
 
+# ------------------ HEALTH ADVICE ------------------
+def health_advice(temp, humidity, condition):
+    tips = []
+    if temp > 32:
+        tips.append("☀️ Stay hydrated and avoid prolonged outdoor activities.")
+    elif temp < 10:
+        tips.append("🧣 Dress warmly to prevent catching a cold.")
+    else:
+        tips.append("😊 Ideal weather for outdoor walks and exercise.")
+
+    if humidity > 80:
+        tips.append("💧 High humidity — keep skin dry to prevent rashes.")
+    elif humidity < 30:
+        tips.append("🌵 Dry air — use moisturizer and stay hydrated.")
+
+    if "rain" in condition.lower():
+        tips.append("☔ Carry an umbrella and wear waterproof shoes.")
+    elif "clear" in condition.lower():
+        tips.append("😎 Use sunscreen while outdoors.")
+    elif "snow" in condition.lower():
+        tips.append("❄️ Keep extremities warm and avoid slippery surfaces.")
+
+    return tips
+
 # -------------------- Logged-in User --------------------
 if st.session_state['logged_in']:
     st.success(f"Welcome back, {st.session_state['email']}!")
 
     weather_placeholder = st.empty()
-    city = st.text_input("Enter your city:")
+    city = st.text_input("🏙 Enter your city")
 
     if st.button("Check Health Advice"):
         if city.strip() == "":
@@ -123,3 +193,4 @@ else:
                 st.rerun()
             else:
                 st.error("❌ Invalid email or password!")
+
