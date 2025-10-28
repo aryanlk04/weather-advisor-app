@@ -7,103 +7,59 @@ from weather_utils import get_weather, health_advice
 # ------------------ PAGE SETUP ------------------
 st.set_page_config(page_title="HealthCare Advisor", page_icon="🩺", layout="centered")
 
-# ------------------ CUSTOM STYLE ------------------
+# -------------------- Custom Top Navigation --------------------
 st.markdown("""
     <style>
-    /* Global background with subtle healthcare theme */
-    [data-testid="stAppViewContainer"] {
-        background-image: url('https://images.unsplash.com/photo-1588776814546-46e61ab46d81?auto=format&fit=crop&w=1500&q=80');
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-    }
-
-    [data-testid="stHeader"] {
-        background: rgba(255,255,255,0);
-    }
-
-    /* Navigation bar */
-    .nav {
-        background-color: rgba(255, 255, 255, 0.8);
-        padding: 0.7em 1.5em;
+    .topnav {
+        background-color: #f0f2f6;
+        overflow: hidden;
+        text-align: center;
+        padding: 12px;
         border-radius: 8px;
-        text-align: center;
-        margin-bottom: 20px;
-    }
-    .nav a {
-        text-decoration: none;
-        color: #0077b6;
-        font-weight: 600;
-        margin: 0 15px;
-        font-size: 1.1em;
-    }
-    .nav a:hover {
-        color: #0096c7;
-        text-decoration: underline;
-    }
-
-    /* Main title */
-    .main-title {
-        text-align: center;
-        color: #023e8a;
-        font-size: 2.6rem;
-        font-weight: 700;
-        margin-top: -10px;
-    }
-    .subtitle {
-        text-align: center;
-        color: #03045e;
-        font-size: 1rem;
         margin-bottom: 25px;
     }
-
-    /* Cards */
-    .card {
-        background: rgba(255, 255, 255, 0.9);
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        margin-bottom: 20px;
-    }
-
-    /* Buttons */
-    div.stButton > button {
-        background-color: #0077b6;
-        color: white;
-        font-weight: 600;
-        border-radius: 8px;
-        padding: 0.6em 1.3em;
-        transition: 0.3s;
-        border: none;
-    }
-    div.stButton > button:hover {
-        background-color: #0096c7;
-        transform: scale(1.03);
-    }
-
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background-color: rgba(173, 232, 244, 0.9);
-    }
-
-    /* Footer */
-    .footer {
+    .topnav a {
+        display: inline-block;
+        color: #333;
         text-align: center;
-        color: #555;
-        font-size: 0.9em;
-        margin-top: 30px;
+        padding: 10px 22px;
+        text-decoration: none;
+        font-size: 18px;
+        font-weight: 600;
+        transition: 0.3s;
+    }
+    .topnav a:hover {
+        background-color: #4CAF50;
+        color: white;
+        border-radius: 6px;
+    }
+    .active {
+        background-color: #4CAF50;
+        color: white !important;
+        border-radius: 6px;
     }
     </style>
-""", unsafe_allow_html=True)
+""", unsafe_allow_html=True))
 
-# ------------------ NAVIGATION ------------------
-st.markdown("""
-    <div class='nav'>
-        <a href='#home'>🏠 Home</a>
-        <a href='#about'>💬 About</a>
-        <a href='#contact'>📞 Contact</a>
-    </div>
-""", unsafe_allow_html=True)
+# -------------------- Navigation Logic --------------------
+if "page" not in st.session_state:
+    st.session_state.page = "Home"
+
+def nav_click(page):
+    st.session_state.page = page
+
+col1, col2, col3 = st.columns([1, 1, 1])
+with col1:
+    if st.button("🏠 Home"):
+        nav_click("Home")
+with col2:
+    if st.button("ℹ️ About"):
+        nav_click("About")
+with col3:
+    if st.button("📞 Contact"):
+        nav_click("Contact")
+
+st.markdown("<hr>", unsafe_allow_html=True)
 # ------------------ HEADER ------------------
 st.markdown("<h1 class='main-title' id='home'>🩺 HealthCare Advisor</h1>", unsafe_allow_html=True)
 st.markdown("<p class='subtitle'>Personalized health insights based on your local weather conditions.</p>", unsafe_allow_html=True)
@@ -138,7 +94,7 @@ if 'logged_in' not in st.session_state:
     st.session_state['email'] = None
 
 # -------------------- HOME PAGE --------------------
-if page == "Home":
+if st.session_state.page == "Home":
     st.title("🩺 Health Advisory App")
     st.subheader("Stay safe & healthy based on your local weather")
 
@@ -187,69 +143,64 @@ if st.session_state['logged_in']:
 
 # -------------------- Login / Sign Up --------------------
 else:
-    choice = st.sidebar.selectbox("Login / Sign Up", ["Login", "Sign Up"])
+        st.info("Please log in or sign up below to get personalized health advice.")
 
-    if choice == "Sign Up":
-        email = st.text_input("Email")
-        password = st.text_input("Password", type="password")
-        if st.button("Sign Up"):
-            cursor.execute("SELECT * FROM users WHERE email=?", (email,))
-            if cursor.fetchone():
-                st.error("❌ Email already registered! Try logging in.")
-            else:
-                password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-                cursor.execute(
-                    "INSERT INTO users(email, password_hash, signup_date) VALUES (?, ?, ?)",
-                    (email, password_hash, str(datetime.now()))
-                )
-                conn.commit()
-                st.success("✅ Account created! Please log in from the sidebar.")
+        tab1, tab2 = st.tabs(["🔑 Login", "🆕 Sign Up"])
 
-    elif choice == "Login":
-        email = st.text_input("Email")
-        password = st.text_input("Password", type="password")
-        if st.button("Login"):
-            cursor.execute("SELECT id, password_hash FROM users WHERE email=?", (email,))
-            user = cursor.fetchone()
-            if user and bcrypt.checkpw(password.encode(), user[1]):
-                st.session_state['logged_in'] = True
-                st.session_state['user_id'] = user[0]
-                st.session_state['email'] = email
-                cursor.execute("UPDATE users SET last_login=? WHERE id=?", (str(datetime.now()), user[0]))
-                conn.commit()
-                st.rerun()
-            else:
-                st.error("❌ Invalid email or password!")
-                # -------------------- ABOUT PAGE --------------------
-if page == "About":
+        with tab1:
+            email = st.text_input("Email", key="login_email")
+            password = st.text_input("Password", type="password", key="login_password")
+            if st.button("Login"):
+                cursor.execute("SELECT id, password_hash FROM users WHERE email=?", (email,))
+                user = cursor.fetchone()
+                if user and bcrypt.checkpw(password.encode(), user[1]):
+                    st.session_state.logged_in = True
+                    st.session_state.user_id = user[0]
+                    st.session_state.email = email
+                    cursor.execute("UPDATE users SET last_login=? WHERE id=?", (str(datetime.now()), user[0]))
+                    conn.commit()
+                    st.experimental_rerun()
+                else:
+                    st.error("❌ Invalid email or password!")
+
+        with tab2:
+            email = st.text_input("New Email", key="signup_email")
+            password = st.text_input("New Password", type="password", key="signup_password")
+            if st.button("Sign Up"):
+                cursor.execute("SELECT * FROM users WHERE email=?", (email,))
+                if cursor.fetchone():
+                    st.error("❌ Email already registered! Try logging in.")
+                else:
+                    password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+                    cursor.execute(
+                        "INSERT INTO users(email, password_hash, signup_date) VALUES (?, ?, ?)",
+                        (email, password_hash, str(datetime.now()))
+                    )
+                    conn.commit()
+                    st.success("✅ Account created successfully! Please log in now.")
+
+# -------------------- ABOUT PAGE --------------------
+elif st.session_state.page == "About":
     st.title("💬 About Health Advisor")
-    st.write("""
-    **Health Advisor** helps users make informed health decisions based on their local weather conditions.  
-    It provides personalized advice on:
-    - 🌞 Sun safety and hydration during heatwaves  
-    - ❄️ Protection against cold and dry weather  
-    - 💧 Humidity-based skin and respiratory tips  
-    - 😷 Air quality and pollution precautions  
+    st.markdown("""
+    The **Health Advisor App** is designed to help you stay healthy and make smart daily choices  
+    based on real-time weather conditions in your city.
 
-    This web app integrates live weather data and turns it into simple, practical health guidance so you can stay healthy every day.  
+    🌤 **What it does:**
+    - Analyzes temperature, humidity, and weather type  
+    - Suggests personalized **health tips** for your environment  
+    - Encourages **preventive care** (e.g., hydration, skincare, air quality)  
+
+    🩺 This app blends **technology + wellness** — making weather data meaningful for your health.
     """)
 
 # -------------------- CONTACT PAGE --------------------
-if page == "Contact":
+elif st.session_state.page == "Contact":
     st.title("📞 Contact Us")
-    st.write("""
-    For support or inquiries, feel free to reach out:
+    st.markdown("""
+    Have a question or need help?  
+    We’re here for you! 💬  
 
     - 📱 **Phone:** 90195 31192  
     - 📧 **Email:** support@healthadvisor.ai  
-    - 🏢 **Address:** HealthTech Street, Bengaluru, India  
-
-    We’re always happy to help you stay healthy and informed! 💙
-    """)
-
-
-
-
-
-
-
+    - 🏢 **Office:** HealthTech Street, Bengaluru, India
