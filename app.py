@@ -271,4 +271,5 @@ elif st.session_state.page == "Contact":
     """)
 
 # -------------------- FOOTER --------------------
-st.markdown("<p class='footer'>© 2025 Health Advisor | Stay Weather-Smart 🌦</p>", unsafe_allow_html=True)
+st.markdown("<p class='footer'>© 2025 Health Advisor | Stay Healthy 🌦</p>", unsafe_allow_html=True)
+
