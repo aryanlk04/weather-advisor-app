@@ -7,37 +7,66 @@ from weather_utils import get_weather, health_advice
 # -------------------- PAGE CONFIG --------------------
 st.set_page_config(page_title="Health Advisor 🌤", page_icon="🩺", layout="centered")
 
-# -------------------- CUSTOM CSS --------------------
+# -------------------- MOBILE-FRIENDLY CUSTOM CSS --------------------
 st.markdown("""
     <style>
     body {
-        background-color: #f8fafc;
+        background-color: #f7f9fc;
         font-family: 'Segoe UI', sans-serif;
     }
+
+    /* Center everything on small screens */
+    @media (max-width: 768px) {
+        .block-container {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+        .nav-button {
+            width: 90% !important;
+            margin: 5px auto !important;
+            display: block !important;
+        }
+    }
+
     .nav-container {
         text-align: center;
-        margin-bottom: 30px;
+        margin-bottom: 20px;
     }
+
     .nav-button {
         background: linear-gradient(90deg, #4ba3e3, #5ec576);
         color: white;
         border: none;
-        padding: 10px 25px;
-        font-size: 18px;
+        padding: 10px 20px;
+        font-size: 17px;
         font-weight: 600;
         border-radius: 8px;
-        margin: 0 10px;
+        margin: 5px 10px;
         cursor: pointer;
         transition: all 0.3s ease;
     }
+
     .nav-button:hover {
         transform: scale(1.05);
         opacity: 0.9;
     }
+
     .active {
         background: linear-gradient(90deg, #2196F3, #4CAF50);
-        box-shadow: 0 0 15px rgba(72, 239, 128, 0.8);
+        box-shadow: 0 0 12px rgba(72, 239, 128, 0.8);
         transform: scale(1.05);
+    }
+
+    .metric-container {
+        text-align: center;
+        margin-top: 10px;
+    }
+
+    .footer {
+        text-align: center;
+        color: gray;
+        font-size: 14px;
+        margin-top: 50px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -46,33 +75,24 @@ st.markdown("""
 if "page" not in st.session_state:
     st.session_state.page = "Home"
 
-# Create three columns for navigation buttons
-col1, col2, col3 = st.columns([1, 1, 1])
+st.markdown('<div class="nav-container">', unsafe_allow_html=True)
 
+col1, col2, col3 = st.columns(3)
 with col1:
-    if st.button("🏠 Home", use_container_width=True):
+    if st.button("🏠 Home", key="home_btn"):
         st.session_state.page = "Home"
 with col2:
-    if st.button("ℹ️ About", use_container_width=True):
+    if st.button("ℹ️ About", key="about_btn"):
         st.session_state.page = "About"
 with col3:
-    if st.button("📞 Contact", use_container_width=True):
+    if st.button("📞 Contact", key="contact_btn"):
         st.session_state.page = "Contact"
 
-# Add visual highlight below the active button
-if st.session_state.page == "Home":
-    st.markdown("<h5 style='text-align:center;color:#4ba3e3;'>🏠 You are on the Home Page</h5>", unsafe_allow_html=True)
-elif st.session_state.page == "About":
-    st.markdown("<h5 style='text-align:center;color:#5ec576;'>ℹ️ You are on the About Page</h5>", unsafe_allow_html=True)
-else:
-    st.markdown("<h5 style='text-align:center;color:#2196F3;'>📞 You are on the Contact Page</h5>", unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
-st.write("---")
-
-# -------------------- DATABASE SETUP --------------------
+# -------------------- DATABASE --------------------
 conn = sqlite3.connect("database.db", check_same_thread=False)
 cursor = conn.cursor()
-
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,7 +112,6 @@ CREATE TABLE IF NOT EXISTS preferences (
 """)
 conn.commit()
 
-# -------------------- SESSION STATE --------------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_id = None
@@ -125,7 +144,7 @@ if st.session_state.page == "Home":
                     for tip in advice:
                         st.success(tip)
 
-                    # Save or update user preference
+                    # Save preference
                     cursor.execute("SELECT * FROM preferences WHERE user_id=?", (st.session_state.user_id,))
                     if cursor.fetchone():
                         cursor.execute("UPDATE preferences SET city=? WHERE user_id=?", (city.strip(), st.session_state.user_id))
@@ -139,11 +158,10 @@ if st.session_state.page == "Home":
             st.session_state.logged_in = False
             st.session_state.user_id = None
             st.session_state.email = None
-            st.rerun()
+            st.experimental_rerun()
 
     else:
         st.info("Please log in or sign up below to get personalized health advice.")
-
         tab1, tab2 = st.tabs(["🔑 Login", "🆕 Sign Up"])
 
         with tab1:
@@ -158,7 +176,7 @@ if st.session_state.page == "Home":
                     st.session_state.email = email
                     cursor.execute("UPDATE users SET last_login=? WHERE id=?", (str(datetime.now()), user[0]))
                     conn.commit()
-                    st.rerun()
+                    st.experimental_rerun()
                 else:
                     st.error("❌ Invalid email or password!")
 
@@ -206,3 +224,6 @@ elif st.session_state.page == "Contact":
     **Email:** support@healthadvisor.ai  
     **Address:** HealthTech Street, Bengaluru, India  
     """)
+
+# -------------------- FOOTER --------------------
+st.markdown("<p class='footer'>© 2025 Health Advisor | Stay Weather-Smart 🌦</p>", unsafe_allow_html=True)
