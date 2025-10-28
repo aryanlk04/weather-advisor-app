@@ -4,90 +4,72 @@ from datetime import datetime
 import bcrypt
 from weather_utils import get_weather, health_advice
 
-# -------------------- Page Config --------------------
-st.set_page_config(
-    page_title="Health Advisor 🌤",
-    page_icon="🩺",
-    layout="centered"
-)
+# -------------------- PAGE CONFIG --------------------
+st.set_page_config(page_title="Health Advisor 🌤", page_icon="🩺", layout="centered")
 
-# -------------------- Custom CSS for Beautiful Top Navigation --------------------
+# -------------------- CUSTOM CSS --------------------
 st.markdown("""
     <style>
-    /* Overall background and font styling */
     body {
-        background-color: #f7f9fb;
+        background-color: #f8fafc;
         font-family: 'Segoe UI', sans-serif;
     }
-
-    /* Navigation bar styling */
-    .topnav {
-        background: linear-gradient(90deg, #5ec576, #4ba3e3);
-        overflow: hidden;
+    .nav-container {
         text-align: center;
-        padding: 15px 10px;
-        border-radius: 10px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         margin-bottom: 30px;
     }
-
-    .topnav a {
-        display: inline-block;
+    .nav-button {
+        background: linear-gradient(90deg, #4ba3e3, #5ec576);
         color: white;
-        text-align: center;
+        border: none;
         padding: 10px 25px;
-        text-decoration: none;
-        font-size: 19px;
+        font-size: 18px;
         font-weight: 600;
+        border-radius: 8px;
+        margin: 0 10px;
+        cursor: pointer;
         transition: all 0.3s ease;
-        border-radius: 5px;
     }
-
-    .topnav a:hover {
-        background-color: rgba(255, 255, 255, 0.2);
-        color: #fff;
+    .nav-button:hover {
         transform: scale(1.05);
+        opacity: 0.9;
     }
-
     .active {
-        background-color: rgba(255, 255, 255, 0.3);
-        color: #fff !important;
-        font-weight: bold;
-        border-radius: 6px;
-    }
-
-    /* Horizontal line styling */
-    hr {
-        border: 1px solid #e0e0e0;
-        margin-bottom: 20px;
-    }
-
-    /* Center align buttons */
-    .center {
-        text-align: center;
+        background: linear-gradient(90deg, #2196F3, #4CAF50);
+        box-shadow: 0 0 15px rgba(72, 239, 128, 0.8);
+        transform: scale(1.05);
     }
     </style>
 """, unsafe_allow_html=True)
 
-# -------------------- Navigation Buttons --------------------
+# -------------------- NAVIGATION --------------------
 if "page" not in st.session_state:
     st.session_state.page = "Home"
 
-def nav_click(page):
-    st.session_state.page = page
+# Create three columns for navigation buttons
+col1, col2, col3 = st.columns([1, 1, 1])
 
-st.markdown("""
-<div class="topnav">
-    <a href="#" onclick="window.parent.postMessage('Home','*')">🏠 Home</a>
-    <a href="#" onclick="window.parent.postMessage('About','*')">ℹ️ About</a>
-    <a href="#" onclick="window.parent.postMessage('Contact','*')">📞 Contact</a>
-</div>
-""", unsafe_allow_html=True)
+with col1:
+    if st.button("🏠 Home", use_container_width=True):
+        st.session_state.page = "Home"
+with col2:
+    if st.button("ℹ️ About", use_container_width=True):
+        st.session_state.page = "About"
+with col3:
+    if st.button("📞 Contact", use_container_width=True):
+        st.session_state.page = "Contact"
 
-# Simulate JS navigation event listener
-nav_event = st.session_state.page
+# Add visual highlight below the active button
+if st.session_state.page == "Home":
+    st.markdown("<h5 style='text-align:center;color:#4ba3e3;'>🏠 You are on the Home Page</h5>", unsafe_allow_html=True)
+elif st.session_state.page == "About":
+    st.markdown("<h5 style='text-align:center;color:#5ec576;'>ℹ️ You are on the About Page</h5>", unsafe_allow_html=True)
+else:
+    st.markdown("<h5 style='text-align:center;color:#2196F3;'>📞 You are on the Contact Page</h5>", unsafe_allow_html=True)
 
-# -------------------- Database Setup --------------------
+st.write("---")
+
+# -------------------- DATABASE SETUP --------------------
 conn = sqlite3.connect("database.db", check_same_thread=False)
 cursor = conn.cursor()
 
@@ -100,7 +82,6 @@ CREATE TABLE IF NOT EXISTS users (
     last_login TEXT
 )
 """)
-
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS preferences (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -111,7 +92,7 @@ CREATE TABLE IF NOT EXISTS preferences (
 """)
 conn.commit()
 
-# -------------------- Session State --------------------
+# -------------------- SESSION STATE --------------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_id = None
@@ -158,7 +139,7 @@ if st.session_state.page == "Home":
             st.session_state.logged_in = False
             st.session_state.user_id = None
             st.session_state.email = None
-            st.rerun()
+            st.experimental_rerun()
 
     else:
         st.info("Please log in or sign up below to get personalized health advice.")
@@ -177,7 +158,7 @@ if st.session_state.page == "Home":
                     st.session_state.email = email
                     cursor.execute("UPDATE users SET last_login=? WHERE id=?", (str(datetime.now()), user[0]))
                     conn.commit()
-                    st.rerun()
+                    st.experimental_rerun()
                 else:
                     st.error("❌ Invalid email or password!")
 
@@ -201,25 +182,27 @@ if st.session_state.page == "Home":
 elif st.session_state.page == "About":
     st.title("💬 About Health Advisor")
     st.markdown("""
-    The **Health Advisor App** combines live weather data with medical insight to help you make better daily health choices.
+    ### 🌤 Your Personal Weather-Based Health Companion  
+    The **Health Advisor App** helps you stay safe and healthy by analyzing live weather data and providing tailored health advice.
 
-    🌤 **What It Does:**
-    - Analyzes local weather (temperature, humidity, condition)  
-    - Suggests **custom health care tips** to protect your skin, hydration, and immunity  
-    - Helps you stay **proactive** about your wellness  
+    **Our Mission:**  
+    Empower individuals to make better daily health choices by understanding how weather impacts their wellbeing.
 
-    💚 Whether it’s hot, humid, or dry — we give you the right health advice at the right time.
+    **Features:**
+    - 💧 Personalized hydration and skincare reminders  
+    - 🌞 Sun and pollution safety tips  
+    - 🌡 Temperature-based lifestyle suggestions  
+
+    Stay weather-smart, stay healthy! 💚
     """)
 
 # -------------------- CONTACT PAGE --------------------
 elif st.session_state.page == "Contact":
     st.title("📞 Contact Us")
     st.markdown("""
-    Have a question or feedback?  
-    We're happy to help you! 💬  
+    We'd love to hear from you! 💬  
 
-    - 📱 **Phone:** 90195 31192  
-    - 📧 **Email:** support@healthadvisor.ai  
-    - 🏢 **Office:** HealthTech Street, Bengaluru, India  
+    **Phone:** 90195 31192  
+    **Email:** support@healthadvisor.ai  
+    **Address:** HealthTech Street, Bengaluru, India  
     """)
-
