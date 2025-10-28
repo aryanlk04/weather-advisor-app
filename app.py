@@ -7,15 +7,62 @@ from weather_utils import get_weather, health_advice
 # -------------------- PAGE CONFIG --------------------
 st.set_page_config(page_title="Health Advisor 🌤", page_icon="🩺", layout="centered")
 
-# -------------------- MOBILE-FRIENDLY CUSTOM CSS --------------------
+# -------------------- ANIMATED BACKGROUND + CSS --------------------
 st.markdown("""
     <style>
     body {
-        background-color: #f7f9fc;
         font-family: 'Segoe UI', sans-serif;
+        color: #333333;
     }
 
-    /* Center everything on small screens */
+    /* Animated gradient background */
+    .stApp {
+        background: linear-gradient(-45deg, #a1c4fd, #c2e9fb, #89f7fe, #66a6ff);
+        background-size: 400% 400%;
+        animation: gradientMove 10s ease infinite;
+    }
+
+    @keyframes gradientMove {
+        0% {background-position: 0% 50%;}
+        50% {background-position: 100% 50%;}
+        100% {background-position: 0% 50%;}
+    }
+
+    /* Cloud animation (optional aesthetic layer) */
+    .cloud {
+        position: absolute;
+        top: 15%;
+        width: 120px;
+        height: 60px;
+        background: #fff;
+        border-radius: 50%;
+        filter: blur(2px);
+        opacity: 0.8;
+        animation: floatCloud 60s linear infinite;
+    }
+    .cloud::before, .cloud::after {
+        content: '';
+        position: absolute;
+        background: #fff;
+        width: 80px;
+        height: 80px;
+        top: -20px;
+        left: 10px;
+        border-radius: 50%;
+    }
+    .cloud::after {
+        width: 100px;
+        height: 60px;
+        top: 10px;
+        left: auto;
+        right: 10px;
+    }
+    @keyframes floatCloud {
+        from {transform: translateX(-200px);}
+        to {transform: translateX(100vw);}
+    }
+
+    /* Responsive layout */
     @media (max-width: 768px) {
         .block-container {
             padding-left: 1rem !important;
@@ -57,18 +104,19 @@ st.markdown("""
         transform: scale(1.05);
     }
 
-    .metric-container {
-        text-align: center;
-        margin-top: 10px;
-    }
-
     .footer {
         text-align: center;
-        color: gray;
+        color: #f5f5f5;
         font-size: 14px;
         margin-top: 50px;
+        text-shadow: 0px 0px 5px rgba(0,0,0,0.3);
     }
     </style>
+
+    <!-- Floating clouds layer -->
+    <div class="cloud" style="animation-delay: 0s; top: 15%;"></div>
+    <div class="cloud" style="animation-delay: 20s; top: 25%;"></div>
+    <div class="cloud" style="animation-delay: 40s; top: 35%;"></div>
 """, unsafe_allow_html=True)
 
 # -------------------- NAVIGATION --------------------
@@ -76,7 +124,6 @@ if "page" not in st.session_state:
     st.session_state.page = "Home"
 
 st.markdown('<div class="nav-container">', unsafe_allow_html=True)
-
 col1, col2, col3 = st.columns(3)
 with col1:
     if st.button("🏠 Home", key="home_btn"):
@@ -87,7 +134,6 @@ with col2:
 with col3:
     if st.button("📞 Contact", key="contact_btn"):
         st.session_state.page = "Contact"
-
 st.markdown('</div>', unsafe_allow_html=True)
 
 # -------------------- DATABASE --------------------
@@ -144,7 +190,6 @@ if st.session_state.page == "Home":
                     for tip in advice:
                         st.success(tip)
 
-                    # Save preference
                     cursor.execute("SELECT * FROM preferences WHERE user_id=?", (st.session_state.user_id,))
                     if cursor.fetchone():
                         cursor.execute("UPDATE preferences SET city=? WHERE user_id=?", (city.strip(), st.session_state.user_id))
@@ -227,4 +272,3 @@ elif st.session_state.page == "Contact":
 
 # -------------------- FOOTER --------------------
 st.markdown("<p class='footer'>© 2025 Health Advisor | Stay Weather-Smart 🌦</p>", unsafe_allow_html=True)
-
