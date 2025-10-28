@@ -4,8 +4,12 @@ from datetime import datetime
 import bcrypt
 from weather_utils import get_weather, health_advice
 
-# ------------------ PAGE SETUP ------------------
-st.set_page_config(page_title="HealthCare Advisor", page_icon="🩺", layout="centered")
+# -------------------- Page Config --------------------
+st.set_page_config(
+    page_title="Health Advisor 🌤",
+    page_icon="🩺",
+    layout="centered"
+)
 
 # -------------------- Custom Top Navigation --------------------
 st.markdown("""
@@ -39,7 +43,7 @@ st.markdown("""
         border-radius: 6px;
     }
     </style>
-""", unsafe_allow_html=True))
+""", unsafe_allow_html=True)
 
 # -------------------- Navigation Logic --------------------
 if "page" not in st.session_state:
@@ -60,9 +64,7 @@ with col3:
         nav_click("Contact")
 
 st.markdown("<hr>", unsafe_allow_html=True)
-# ------------------ HEADER ------------------
-st.markdown("<h1 class='main-title' id='home'>🩺 HealthCare Advisor</h1>", unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>Personalized health insights based on your local weather conditions.</p>", unsafe_allow_html=True)
+
 # -------------------- Database Setup --------------------
 conn = sqlite3.connect("database.db", check_same_thread=False)
 cursor = conn.cursor()
@@ -88,32 +90,27 @@ CREATE TABLE IF NOT EXISTS preferences (
 conn.commit()
 
 # -------------------- Session State --------------------
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False
-    st.session_state['user_id'] = None
-    st.session_state['email'] = None
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+    st.session_state.user_id = None
+    st.session_state.email = None
 
 # -------------------- HOME PAGE --------------------
 if st.session_state.page == "Home":
     st.title("🩺 Health Advisory App")
-    st.subheader("Stay safe & healthy based on your local weather")
+    st.subheader("Stay safe & healthy based on your local weather 🌤")
 
-# If logged in
-if st.session_state['logged_in']:
-    st.success(f"Welcome back, {st.session_state['email']}!")
+    if st.session_state.logged_in:
+        st.success(f"Welcome back, {st.session_state.email}!")
 
-    weather_placeholder = st.empty()
-    city = st.text_input("🏙 Enter your city")
-
-    if st.button("Check Health Advice"):
-        if city.strip() == "":
-            weather_placeholder.warning("⚠️ Please enter a city name.")
-        else:
-            weather = get_weather(city.strip())
-            if weather:
-                advice = health_advice(weather['temp'], weather['humidity'], weather['condition'])
-
-                with weather_placeholder.container():
+        city = st.text_input("🏙️ Enter your city:")
+        if st.button("Check Health Advice"):
+            if city.strip() == "":
+                st.warning("⚠️ Please enter a city name.")
+            else:
+                weather = get_weather(city.strip())
+                if weather:
+                    advice = health_advice(weather['temp'], weather['humidity'], weather['condition'])
                     col1, col2 = st.columns(2)
                     with col1:
                         st.metric(label="🌡 Temperature (°C)", value=weather['temp'])
@@ -126,23 +123,22 @@ if st.session_state['logged_in']:
                         st.success(tip)
 
                     # Save or update user preference
-                    cursor.execute("SELECT * FROM preferences WHERE user_id=?", (st.session_state['user_id'],))
+                    cursor.execute("SELECT * FROM preferences WHERE user_id=?", (st.session_state.user_id,))
                     if cursor.fetchone():
-                        cursor.execute("UPDATE preferences SET city=? WHERE user_id=?", (city.strip(), st.session_state['user_id']))
+                        cursor.execute("UPDATE preferences SET city=? WHERE user_id=?", (city.strip(), st.session_state.user_id))
                     else:
-                        cursor.execute("INSERT INTO preferences(user_id, city) VALUES (?, ?)", (st.session_state['user_id'], city.strip()))
+                        cursor.execute("INSERT INTO preferences(user_id, city) VALUES (?, ?)", (st.session_state.user_id, city.strip()))
                     conn.commit()
-            else:
-                weather_placeholder.error("❌ City not found or API error. Check spelling or API key.")
+                else:
+                    st.error("❌ City not found or API error. Check spelling or API key.")
 
-    if st.button("Logout"):
-        st.session_state['logged_in'] = False
-        st.session_state['user_id'] = None
-        st.session_state['email'] = None
-        st.rerun()
+        if st.button("Logout"):
+            st.session_state.logged_in = False
+            st.session_state.user_id = None
+            st.session_state.email = None
+            st.rerun()
 
-# -------------------- Login / Sign Up --------------------
-else:
+    else:
         st.info("Please log in or sign up below to get personalized health advice.")
 
         tab1, tab2 = st.tabs(["🔑 Login", "🆕 Sign Up"])
@@ -159,7 +155,7 @@ else:
                     st.session_state.email = email
                     cursor.execute("UPDATE users SET last_login=? WHERE id=?", (str(datetime.now()), user[0]))
                     conn.commit()
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error("❌ Invalid email or password!")
 
@@ -203,4 +199,5 @@ elif st.session_state.page == "Contact":
 
     - 📱 **Phone:** 90195 31192  
     - 📧 **Email:** support@healthadvisor.ai  
-    - 🏢 **Office:** HealthTech Street, Bengaluru, India
+    - 🏢 **Office:** HealthTech Street, Bengaluru, India  
+    """)
