@@ -158,7 +158,7 @@ if st.session_state.page == "Home":
             st.session_state.logged_in = False
             st.session_state.user_id = None
             st.session_state.email = None
-            st.experimental_rerun()
+            st.rerun()
 
     else:
         st.info("Please log in or sign up below to get personalized health advice.")
@@ -177,7 +177,7 @@ if st.session_state.page == "Home":
                     st.session_state.email = email
                     cursor.execute("UPDATE users SET last_login=? WHERE id=?", (str(datetime.now()), user[0]))
                     conn.commit()
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error("❌ Invalid email or password!")
 
@@ -222,3 +222,4 @@ elif st.session_state.page == "Contact":
     - 📧 **Email:** support@healthadvisor.ai  
     - 🏢 **Office:** HealthTech Street, Bengaluru, India  
     """)
+
