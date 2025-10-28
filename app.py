@@ -11,59 +11,81 @@ st.set_page_config(
     layout="centered"
 )
 
-# -------------------- Custom Top Navigation --------------------
+# -------------------- Custom CSS for Beautiful Top Navigation --------------------
 st.markdown("""
     <style>
+    /* Overall background and font styling */
+    body {
+        background-color: #f7f9fb;
+        font-family: 'Segoe UI', sans-serif;
+    }
+
+    /* Navigation bar styling */
     .topnav {
-        background-color: #f0f2f6;
+        background: linear-gradient(90deg, #5ec576, #4ba3e3);
         overflow: hidden;
         text-align: center;
-        padding: 12px;
-        border-radius: 8px;
-        margin-bottom: 25px;
+        padding: 15px 10px;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
     }
+
     .topnav a {
         display: inline-block;
-        color: #333;
-        text-align: center;
-        padding: 10px 22px;
-        text-decoration: none;
-        font-size: 18px;
-        font-weight: 600;
-        transition: 0.3s;
-    }
-    .topnav a:hover {
-        background-color: #4CAF50;
         color: white;
+        text-align: center;
+        padding: 10px 25px;
+        text-decoration: none;
+        font-size: 19px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border-radius: 5px;
+    }
+
+    .topnav a:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        color: #fff;
+        transform: scale(1.05);
+    }
+
+    .active {
+        background-color: rgba(255, 255, 255, 0.3);
+        color: #fff !important;
+        font-weight: bold;
         border-radius: 6px;
     }
-    .active {
-        background-color: #4CAF50;
-        color: white !important;
-        border-radius: 6px;
+
+    /* Horizontal line styling */
+    hr {
+        border: 1px solid #e0e0e0;
+        margin-bottom: 20px;
+    }
+
+    /* Center align buttons */
+    .center {
+        text-align: center;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# -------------------- Navigation Logic --------------------
+# -------------------- Navigation Buttons --------------------
 if "page" not in st.session_state:
     st.session_state.page = "Home"
 
 def nav_click(page):
     st.session_state.page = page
 
-col1, col2, col3 = st.columns([1, 1, 1])
-with col1:
-    if st.button("🏠 Home"):
-        nav_click("Home")
-with col2:
-    if st.button("ℹ️ About"):
-        nav_click("About")
-with col3:
-    if st.button("📞 Contact"):
-        nav_click("Contact")
+st.markdown("""
+<div class="topnav">
+    <a href="#" onclick="window.parent.postMessage('Home','*')">🏠 Home</a>
+    <a href="#" onclick="window.parent.postMessage('About','*')">ℹ️ About</a>
+    <a href="#" onclick="window.parent.postMessage('Contact','*')">📞 Contact</a>
+</div>
+""", unsafe_allow_html=True)
 
-st.markdown("<hr>", unsafe_allow_html=True)
+# Simulate JS navigation event listener
+nav_event = st.session_state.page
 
 # -------------------- Database Setup --------------------
 conn = sqlite3.connect("database.db", check_same_thread=False)
@@ -98,7 +120,7 @@ if "logged_in" not in st.session_state:
 # -------------------- HOME PAGE --------------------
 if st.session_state.page == "Home":
     st.title("🩺 Health Advisory App")
-    st.subheader("Stay safe & healthy based on your local weather 🌤")
+    st.subheader("Stay Safe & Healthy Based on Your Local Weather 🌤")
 
     if st.session_state.logged_in:
         st.success(f"Welcome back, {st.session_state.email}!")
@@ -136,7 +158,7 @@ if st.session_state.page == "Home":
             st.session_state.logged_in = False
             st.session_state.user_id = None
             st.session_state.email = None
-            st.rerun()
+            st.experimental_rerun()
 
     else:
         st.info("Please log in or sign up below to get personalized health advice.")
@@ -155,7 +177,7 @@ if st.session_state.page == "Home":
                     st.session_state.email = email
                     cursor.execute("UPDATE users SET last_login=? WHERE id=?", (str(datetime.now()), user[0]))
                     conn.commit()
-                    st.rerun()
+                    st.experimental_rerun()
                 else:
                     st.error("❌ Invalid email or password!")
 
@@ -179,23 +201,22 @@ if st.session_state.page == "Home":
 elif st.session_state.page == "About":
     st.title("💬 About Health Advisor")
     st.markdown("""
-    The **Health Advisor App** is designed to help you stay healthy and make smart daily choices  
-    based on real-time weather conditions in your city.
+    The **Health Advisor App** combines live weather data with medical insight to help you make better daily health choices.
 
-    🌤 **What it does:**
-    - Analyzes temperature, humidity, and weather type  
-    - Suggests personalized **health tips** for your environment  
-    - Encourages **preventive care** (e.g., hydration, skincare, air quality)  
+    🌤 **What It Does:**
+    - Analyzes local weather (temperature, humidity, condition)  
+    - Suggests **custom health care tips** to protect your skin, hydration, and immunity  
+    - Helps you stay **proactive** about your wellness  
 
-    🩺 This app blends **technology + wellness** — making weather data meaningful for your health.
+    💚 Whether it’s hot, humid, or dry — we give you the right health advice at the right time.
     """)
 
 # -------------------- CONTACT PAGE --------------------
 elif st.session_state.page == "Contact":
     st.title("📞 Contact Us")
     st.markdown("""
-    Have a question or need help?  
-    We’re here for you! 💬  
+    Have a question or feedback?  
+    We're happy to help you! 💬  
 
     - 📱 **Phone:** 90195 31192  
     - 📧 **Email:** support@healthadvisor.ai  
