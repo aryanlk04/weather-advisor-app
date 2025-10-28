@@ -10,57 +10,34 @@ st.set_page_config(page_title="Health Advisor 🌤", page_icon="🩺", layout="c
 # -------------------- CUSTOM CSS --------------------
 st.markdown("""
     <style>
-    /* Overall background and font styling */
     body {
-        background-color: #f7f9fb;
+        background-color: #f8fafc;
         font-family: 'Segoe UI', sans-serif;
     }
-
-    /* Navigation bar styling */
-    .topnav {
-        background: linear-gradient(90deg, #5ec576, #4ba3e3);
-        overflow: hidden;
+    .nav-container {
         text-align: center;
-        padding: 15px 10px;
-        border-radius: 10px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         margin-bottom: 30px;
     }
-
-    .topnav a {
-        display: inline-block;
+    .nav-button {
+        background: linear-gradient(90deg, #4ba3e3, #5ec576);
         color: white;
-        text-align: center;
+        border: none;
         padding: 10px 25px;
-        text-decoration: none;
-        font-size: 19px;
+        font-size: 18px;
         font-weight: 600;
+        border-radius: 8px;
+        margin: 0 10px;
+        cursor: pointer;
         transition: all 0.3s ease;
-        border-radius: 5px;
     }
-
-    .topnav a:hover {
-        background-color: rgba(255, 255, 255, 0.2);
-        color: #fff;
+    .nav-button:hover {
         transform: scale(1.05);
+        opacity: 0.9;
     }
-
     .active {
-        background-color: rgba(255, 255, 255, 0.3);
-        color: #fff !important;
-        font-weight: bold;
-        border-radius: 6px;
-    }
-
-    /* Horizontal line styling */
-    hr {
-        border: 1px solid #e0e0e0;
-        margin-bottom: 20px;
-    }
-
-    /* Center align buttons */
-    .center {
-        text-align: center;
+        background: linear-gradient(90deg, #2196F3, #4CAF50);
+        box-shadow: 0 0 15px rgba(72, 239, 128, 0.8);
+        transform: scale(1.05);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -162,7 +139,7 @@ if st.session_state.page == "Home":
             st.session_state.logged_in = False
             st.session_state.user_id = None
             st.session_state.email = None
-            st.experimental_rerun()
+            st.rerun()
 
     else:
         st.info("Please log in or sign up below to get personalized health advice.")
@@ -181,7 +158,7 @@ if st.session_state.page == "Home":
                     st.session_state.email = email
                     cursor.execute("UPDATE users SET last_login=? WHERE id=?", (str(datetime.now()), user[0]))
                     conn.commit()
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error("❌ Invalid email or password!")
 
@@ -229,4 +206,3 @@ elif st.session_state.page == "Contact":
     **Email:** support@healthadvisor.ai  
     **Address:** HealthTech Street, Bengaluru, India  
     """)
-
