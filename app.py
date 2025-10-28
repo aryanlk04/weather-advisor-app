@@ -7,60 +7,107 @@ from weather_utils import get_weather, health_advice
 # ------------------ PAGE SETUP ------------------
 st.set_page_config(page_title="HealthCare Advisor", page_icon="🩺", layout="centered")
 
-# Custom CSS for a modern health-themed design
+# ------------------ CUSTOM STYLE ------------------
 st.markdown("""
     <style>
-    /* Background gradient */
-    body {
-        background: linear-gradient(135deg, #e6f0ff 0%, #ffffff 100%);
-        font-family: 'Poppins', sans-serif;
+    /* Global background with subtle healthcare theme */
+    [data-testid="stAppViewContainer"] {
+        background-image: url('https://images.unsplash.com/photo-1588776814546-46e61ab46d81?auto=format&fit=crop&w=1500&q=80');
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
     }
+
+    [data-testid="stHeader"] {
+        background: rgba(255,255,255,0);
+    }
+
+    /* Navigation bar */
+    .nav {
+        background-color: rgba(255, 255, 255, 0.8);
+        padding: 0.7em 1.5em;
+        border-radius: 8px;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .nav a {
+        text-decoration: none;
+        color: #0077b6;
+        font-weight: 600;
+        margin: 0 15px;
+        font-size: 1.1em;
+    }
+    .nav a:hover {
+        color: #0096c7;
+        text-decoration: underline;
+    }
+
     /* Main title */
     .main-title {
         text-align: center;
-        color: #0077b6;
-        font-size: 2.5rem;
+        color: #023e8a;
+        font-size: 2.6rem;
         font-weight: 700;
         margin-top: -10px;
     }
-    /* Sub text */
     .subtitle {
         text-align: center;
-        color: #555;
+        color: #03045e;
         font-size: 1rem;
-        margin-bottom: 20px;
+        margin-bottom: 25px;
     }
-    /* Card design for weather and health info */
+
+    /* Cards */
     .card {
-        background-color: #f0f8ff;
+        background: rgba(255, 255, 255, 0.9);
         border-radius: 12px;
         padding: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         margin-bottom: 20px;
     }
+
     /* Buttons */
     div.stButton > button {
         background-color: #0077b6;
         color: white;
         font-weight: 600;
         border-radius: 8px;
-        padding: 0.6em 1.2em;
+        padding: 0.6em 1.3em;
         transition: 0.3s;
+        border: none;
     }
     div.stButton > button:hover {
         background-color: #0096c7;
         transform: scale(1.03);
     }
+
     /* Sidebar */
     [data-testid="stSidebar"] {
-        background-color: #caf0f8;
+        background-color: rgba(173, 232, 244, 0.9);
+    }
+
+    /* Footer */
+    .footer {
+        text-align: center;
+        color: #555;
+        font-size: 0.9em;
+        margin-top: 30px;
     }
     </style>
 """, unsafe_allow_html=True)
 
+# ------------------ NAVIGATION ------------------
+st.markdown("""
+    <div class='nav'>
+        <a href='#home'>🏠 Home</a>
+        <a href='#about'>💬 About</a>
+        <a href='#contact'>📞 Contact</a>
+    </div>
+""", unsafe_allow_html=True)
+
 # ------------------ HEADER ------------------
-st.markdown("<h1 class='main-title'>🩺 HealthCare Advisor</h1>", unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>Your personal health companion powered by live weather insights.</p>", unsafe_allow_html=True)
+st.markdown("<h1 class='main-title' id='home'>🩺 HealthCare Advisor</h1>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>Personalized health insights based on your local weather conditions.</p>", unsafe_allow_html=True)
 # -------------------- Database Setup --------------------
 conn = sqlite3.connect("database.db", check_same_thread=False)
 cursor = conn.cursor()
@@ -169,5 +216,6 @@ else:
                 st.rerun()
             else:
                 st.error("❌ Invalid email or password!")
+
 
 
