@@ -1,155 +1,42 @@
 import streamlit as st
 import sqlite3
-from datetime import datetime
 import bcrypt
-from weather_utils import get_weather, health_advice
+from datetime import datetime
+from twilio.rest import Client
+from weather_utils import get_weather, health_advice   # you already have this
 
 # -------------------- PAGE CONFIG --------------------
-st.set_page_config(page_title="Health Advisor 🌤", page_icon="🩺", layout="centered")
+st.set_page_config(page_title="Dream Aware", page_icon="🩺", layout="centered")
 
-# -------------------- ANIMATED BACKGROUND + CSS --------------------
-st.markdown("""
-    <style>
-    body {
-        font-family: 'Segoe UI', sans-serif;
-        color: #333333;
-    }
+# -------------------- TWILIO (from secrets) --------------------
+# Add these to .streamlit/secrets.toml:
+# TWILIO_SID = "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+# TWILIO_AUTH = "your_auth_token"
+# TWILIO_VERIFY_SID = "VAxxxxxxxxxxxxxxxxxxxxxxxx"  # Verify Service SID
+def get_twilio_client():
+    return Client(st.secrets["TWILIO_SID"], st.secrets["TWILIO_AUTH"])
 
-    /* Animated gradient background */
-    .stApp {
-        background: linear-gradient(-45deg, #a1c4fd, #c2e9fb, #89f7fe, #66a6ff);
-        background-size: 400% 400%;
-        animation: gradientMove 10s ease infinite;
-    }
+VERIFY_SID = st.secrets.get("TWILIO_VERIFY_SID", None)
 
-    @keyframes gradientMove {
-        0% {background-position: 0% 50%;}
-        50% {background-position: 100% 50%;}
-        100% {background-position: 0% 50%;}
-    }
-
-    /* Cloud animation (optional aesthetic layer) */
-    .cloud {
-        position: absolute;
-        top: 15%;
-        width: 120px;
-        height: 60px;
-        background: #fff;
-        border-radius: 50%;
-        filter: blur(2px);
-        opacity: 0.8;
-        animation: floatCloud 60s linear infinite;
-    }
-    .cloud::before, .cloud::after {
-        content: '';
-        position: absolute;
-        background: #fff;
-        width: 80px;
-        height: 80px;
-        top: -20px;
-        left: 10px;
-        border-radius: 50%;
-    }
-    .cloud::after {
-        width: 100px;
-        height: 60px;
-        top: 10px;
-        left: auto;
-        right: 10px;
-    }
-    @keyframes floatCloud {
-        from {transform: translateX(-200px);}
-        to {transform: translateX(100vw);}
-    }
-
-    /* Responsive layout */
-    @media (max-width: 768px) {
-        .block-container {
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
-        }
-        .nav-button {
-            width: 90% !important;
-            margin: 5px auto !important;
-            display: block !important;
-        }
-    }
-
-    .nav-container {
-        text-align: center;
-        margin-bottom: 20px;
-    }
-
-    .nav-button {
-        background: linear-gradient(90deg, #4ba3e3, #5ec576);
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        font-size: 17px;
-        font-weight: 600;
-        border-radius: 8px;
-        margin: 5px 10px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-
-    .nav-button:hover {
-        transform: scale(1.05);
-        opacity: 0.9;
-    }
-
-    .active {
-        background: linear-gradient(90deg, #2196F3, #4CAF50);
-        box-shadow: 0 0 12px rgba(72, 239, 128, 0.8);
-        transform: scale(1.05);
-    }
-
-    .footer {
-        text-align: center;
-        color: #f5f5f5;
-        font-size: 14px;
-        margin-top: 50px;
-        text-shadow: 0px 0px 5px rgba(0,0,0,0.3);
-    }
-    </style>
-
-    <!-- Floating clouds layer -->
-    <div class="cloud" style="animation-delay: 0s; top: 15%;"></div>
-    <div class="cloud" style="animation-delay: 20s; top: 25%;"></div>
-    <div class="cloud" style="animation-delay: 40s; top: 35%;"></div>
-""", unsafe_allow_html=True)
-
-# -------------------- NAVIGATION --------------------
-if "page" not in st.session_state:
-    st.session_state.page = "Home"
-
-st.markdown('<div class="nav-container">', unsafe_allow_html=True)
-col1, col2, col3 = st.columns(3)
-with col1:
-    if st.button("🏠 Home", key="home_btn"):
-        st.session_state.page = "Home"
-with col2:
-    if st.button("ℹ️ About", key="about_btn"):
-        st.session_state.page = "About"
-with col3:
-    if st.button("📞 Contact", key="contact_btn"):
-        st.session_state.page = "Contact"
-st.markdown('</div>', unsafe_allow_html=True)
-
-# -------------------- DATABASE --------------------
+# -------------------- DB SETUP --------------------
 conn = sqlite3.connect("database.db", check_same_thread=False)
-cursor = conn.cursor()
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS users (
+cur = conn.cursor()
+
+cur.execute("""
+CREATE TABLE IF NOT EXISTS users(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
+    phone TEXT UNIQUE NOT NULL,
+    address TEXT,
+    password_hash BLOB NOT NULL,
+    verified INTEGER DEFAULT 0,
     signup_date TEXT,
     last_login TEXT
 )
 """)
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS preferences (
+cur.execute("""
+CREATE TABLE IF NOT EXISTS preferences(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
     city TEXT,
@@ -158,46 +45,102 @@ CREATE TABLE IF NOT EXISTS preferences (
 """)
 conn.commit()
 
+# -------------------- SESSION --------------------
+if "page" not in st.session_state:
+    st.session_state.page = "Home"
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_id = None
     st.session_state.email = None
+if "signup_stage" not in st.session_state:
+    st.session_state.signup_stage = "form"  # form -> otp
+if "pending_user" not in st.session_state:
+    st.session_state.pending_user = None  # temp store before OTP
 
-# -------------------- HOME PAGE --------------------
+# -------------------- NAV --------------------
+col1, col2, col3 = st.columns(3)
+with col1:
+    if st.button("🏠 Home", use_container_width=True): st.session_state.page = "Home"
+with col2:
+    if st.button("ℹ️ About", use_container_width=True): st.session_state.page = "About"
+with col3:
+    if st.button("📞 Contact", use_container_width=True): st.session_state.page = "Contact"
+st.write("---")
+
+# -------------------- HELPERS --------------------
+def email_or_phone_login(login_id: str, password: str):
+    cur.execute("SELECT id, password_hash, verified, email FROM users WHERE email=? OR phone=?", (login_id, login_id))
+    row = cur.fetchone()
+    if not row:
+        return False, "User not found."
+    uid, pw_hash, verified, email = row
+    if not verified:
+        return False, "Your account is not verified yet. Please sign up and complete OTP verification."
+    if bcrypt.checkpw(password.encode(), pw_hash):
+        st.session_state.logged_in = True
+        st.session_state.user_id = uid
+        st.session_state.email = email
+        cur.execute("UPDATE users SET last_login=? WHERE id=?", (str(datetime.now()), uid))
+        conn.commit()
+        return True, None
+    return False, "Incorrect password."
+
+def send_verify_code(phone: str) -> bool:
+    """Send an OTP via Twilio Verify to the given phone."""
+    if not VERIFY_SID:
+        st.error("Twilio Verify SID not configured. Add TWILIO_VERIFY_SID to secrets.")
+        return False
+    client = get_twilio_client()
+    try:
+        client.verify.v2.services(VERIFY_SID).verifications.create(to=phone, channel="sms")
+        return True
+    except Exception as e:
+        st.error(f"Failed to send OTP: {e}")
+        return False
+
+def check_verify_code(phone: str, code: str) -> bool:
+    """Validate the OTP via Twilio Verify."""
+    client = get_twilio_client()
+    try:
+        res = client.verify.v2.services(VERIFY_SID).verification_checks.create(to=phone, code=code.strip())
+        return res.status == "approved"
+    except Exception as e:
+        st.error(f"Verification failed: {e}")
+        return False
+
+# -------------------- PAGES --------------------
 if st.session_state.page == "Home":
-    st.title("🩺 Health Advisory App")
-    st.subheader("Stay Safe & Healthy Based on Your Local Weather 🌤")
+    st.title("🩺 Dream Aware")
+    st.subheader("Weather-Based Health Advisory System")
 
     if st.session_state.logged_in:
         st.success(f"Welcome back, {st.session_state.email}!")
-
         city = st.text_input("🏙️ Enter your city:")
         if st.button("Check Health Advice"):
-            if city.strip() == "":
-                st.warning("⚠️ Please enter a city name.")
+            if not city.strip():
+                st.warning("Please enter a city.")
             else:
-                weather = get_weather(city.strip())
-                if weather:
-                    advice = health_advice(weather['temp'], weather['humidity'], weather['condition'])
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.metric(label="🌡 Temperature (°C)", value=weather['temp'])
-                        st.metric(label="💧 Humidity (%)", value=weather['humidity'])
-                    with col2:
-                        st.info(f"☁️ Condition: {weather['condition'].capitalize()}")
-
-                    st.subheader("💡 Health Recommendations:")
-                    for tip in advice:
+                w = get_weather(city.strip())
+                if not w:
+                    st.error("City not found or API error.")
+                else:
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.metric("🌡 Temperature (°C)", w["temp"])
+                        st.metric("💧 Humidity (%)", w["humidity"])
+                    with c2:
+                        st.info(f"☁️ Condition: {w['condition'].capitalize()}")
+                    st.subheader("💡 Health Recommendations")
+                    for tip in health_advice(w["temp"], w["humidity"], w["condition"]):
                         st.success(tip)
 
-                    cursor.execute("SELECT * FROM preferences WHERE user_id=?", (st.session_state.user_id,))
-                    if cursor.fetchone():
-                        cursor.execute("UPDATE preferences SET city=? WHERE user_id=?", (city.strip(), st.session_state.user_id))
+                    # save preferred city
+                    cur.execute("SELECT 1 FROM preferences WHERE user_id=?", (st.session_state.user_id,))
+                    if cur.fetchone():
+                        cur.execute("UPDATE preferences SET city=? WHERE user_id=?", (city.strip(), st.session_state.user_id))
                     else:
-                        cursor.execute("INSERT INTO preferences(user_id, city) VALUES (?, ?)", (st.session_state.user_id, city.strip()))
+                        cur.execute("INSERT INTO preferences(user_id, city) VALUES (?,?)", (st.session_state.user_id, city.strip()))
                     conn.commit()
-                else:
-                    st.error("❌ City not found or API error. Check spelling or API key.")
 
         if st.button("Logout"):
             st.session_state.logged_in = False
@@ -206,70 +149,97 @@ if st.session_state.page == "Home":
             st.rerun()
 
     else:
-        st.info("Please log in or sign up below to get personalized health advice.")
-        tab1, tab2 = st.tabs(["🔑 Login", "🆕 Sign Up"])
+        tab_login, tab_signup = st.tabs(["🔑 Login", "🆕 Sign Up"])
 
-        with tab1:
-            email = st.text_input("Email", key="login_email")
-            password = st.text_input("Password", type="password", key="login_password")
+        # -------- LOGIN --------
+        with tab_login:
+            login_id = st.text_input("Email or Phone Number")
+            password = st.text_input("Password", type="password")
             if st.button("Login"):
-                cursor.execute("SELECT id, password_hash FROM users WHERE email=?", (email,))
-                user = cursor.fetchone()
-                if user and bcrypt.checkpw(password.encode(), user[1]):
-                    st.session_state.logged_in = True
-                    st.session_state.user_id = user[0]
-                    st.session_state.email = email
-                    cursor.execute("UPDATE users SET last_login=? WHERE id=?", (str(datetime.now()), user[0]))
-                    conn.commit()
+                ok, msg = email_or_phone_login(login_id.strip(), password)
+                if ok:
                     st.rerun()
                 else:
-                    st.error("❌ Invalid email or password!")
+                    st.error(msg)
 
-        with tab2:
-            email = st.text_input("New Email", key="signup_email")
-            password = st.text_input("New Password", type="password", key="signup_password")
-            if st.button("Sign Up"):
-                cursor.execute("SELECT * FROM users WHERE email=?", (email,))
-                if cursor.fetchone():
-                    st.error("❌ Email already registered! Try logging in.")
-                else:
-                    password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-                    cursor.execute(
-                        "INSERT INTO users(email, password_hash, signup_date) VALUES (?, ?, ?)",
-                        (email, password_hash, str(datetime.now()))
-                    )
-                    conn.commit()
-                    st.success("✅ Account created successfully! Please log in now.")
+        # -------- SIGN UP (FORM + OTP) --------
+        with tab_signup:
+            if st.session_state.signup_stage == "form":
+                name = st.text_input("Full Name")
+                email = st.text_input("Email")
+                phone = st.text_input("Phone (E.164, e.g., +9190xxxxxxx)")
+                address = st.text_area("Address")
+                pw = st.text_input("Create Password", type="password")
 
-# -------------------- ABOUT PAGE --------------------
+                if st.button("Send OTP"):
+                    # basic checks
+                    if not all([name.strip(), email.strip(), phone.strip(), pw.strip()]):
+                        st.warning("Please fill all required fields (name, email, phone, password).")
+                    else:
+                        cur.execute("SELECT 1 FROM users WHERE email=? OR phone=?", (email.strip(), phone.strip()))
+                        if cur.fetchone():
+                            st.error("An account with this email/phone already exists.")
+                        else:
+                            # send verify code
+                            if send_verify_code(phone.strip()):
+                                st.session_state.pending_user = {
+                                    "name": name.strip(),
+                                    "email": email.strip(),
+                                    "phone": phone.strip(),
+                                    "address": address.strip(),
+                                    "password": pw
+                                }
+                                st.session_state.signup_stage = "otp"
+                                st.info(f"OTP sent to {phone}. Please enter it below.")
+                            # else: error already shown
+
+            elif st.session_state.signup_stage == "otp":
+                st.write("Enter the OTP sent to your phone to complete registration.")
+                code = st.text_input("Verification code (6 digits)")
+                cols = st.columns(2)
+                with cols[0]:
+                    if st.button("Verify & Create Account"):
+                        if not code.strip():
+                            st.warning("Enter the OTP.")
+                        else:
+                            pu = st.session_state.pending_user
+                            if not pu:
+                                st.error("No pending signup found. Please start again.")
+                            else:
+                                if check_verify_code(pu["phone"], code):
+                                    # create user
+                                    pw_hash = bcrypt.hashpw(pu["password"].encode(), bcrypt.gensalt())
+                                    cur.execute(
+                                        "INSERT INTO users(name,email,phone,address,password_hash,verified,signup_date) "
+                                        "VALUES (?,?,?,?,?,?,?)",
+                                        (pu["name"], pu["email"], pu["phone"], pu["address"], pw_hash, 1, str(datetime.now()))
+                                    )
+                                    conn.commit()
+                                    st.success("✅ Phone verified & account created! Please login now.")
+                                    # reset stage
+                                    st.session_state.signup_stage = "form"
+                                    st.session_state.pending_user = None
+                                else:
+                                    st.error("Invalid or expired code. Try again.")
+                with cols[1]:
+                    if st.button("Resend OTP"):
+                        pu = st.session_state.pending_user
+                        if pu and send_verify_code(pu["phone"]):
+                            st.info("OTP resent. Please check your messages.")
+                    if st.button("Cancel"):
+                        st.session_state.signup_stage = "form"
+                        st.session_state.pending_user = None
+
 elif st.session_state.page == "About":
-    st.title("💬 About Health Advisor")
-    st.markdown("""
-    ### 🌤 Your Personal Weather-Based Health Companion  
-    The **Health Advisor App** helps you stay safe and healthy by analyzing live weather data and providing tailored health advice.
+    st.title("ℹ️ About Dream Aware")
+    st.write(
+        "Dream Aware is a weather-based health advisory system. It combines real-time "
+        "weather from OpenWeather with practical health guidance, and includes secure "
+        "OTP-verified accounts (Twilio Verify)."
+    )
 
-    **Our Mission:**  
-    Empower individuals to make better daily health choices by understanding how weather impacts their wellbeing.
-
-    **Features:**
-    - 💧 Personalized hydration and skincare reminders  
-    - 🌞 Sun and pollution safety tips  
-    - 🌡 Temperature-based lifestyle suggestions  
-
-    Stay weather-smart, stay healthy! 💚
-    """)
-
-# -------------------- CONTACT PAGE --------------------
 elif st.session_state.page == "Contact":
-    st.title("📞 Contact Us")
-    st.markdown("""
-    We'd love to hear from you! 💬  
+    st.title("📞 Contact")
+    st.write("Phone: **90195 31192**\n\nEmail: **support@dreamaware.ai**")
 
-    **Phone:** 90195 31192  
-    **Email:** support@healthadvisor.ai  
-    **Address:** HealthTech Street, Bengaluru, India  
-    """)
-
-# -------------------- FOOTER --------------------
-st.markdown("<p class='footer'>© 2025 Health Advisor | Stay Healthy 🌦</p>", unsafe_allow_html=True)
-
+st.markdown("<hr><center>© 2025 Dream Aware — Weather-Based Health Advisor</center>", unsafe_allow_html=True)
