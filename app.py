@@ -194,7 +194,7 @@ with tab_signup:
                         }
                         st.session_state.signup_stage = "otp"
                         st.success(f"OTP sent to {phone}. Please enter it below.")
-                        st.experimental_rerun()   # <-- force UI to show OTP inputs immediately
+                        st.rerun()   # <-- force UI to show OTP inputs immediately
 
     elif st.session_state.signup_stage == "otp":
         st.info(f"Enter the OTP sent to {st.session_state.pending_user['phone']}")
