@@ -165,11 +165,7 @@ if st.session_state.page == "Home":
        # ---------- SIGN UP (FORM -> OTP) ----------
 with tab_signup:
     # init stage flags
-    if "signup_stage" not in st.session_state:
-        st.session_state.signup_stage = "form"
-    if "pending_user" not in st.session_state:
-        st.session_state.pending_user = None
-
+   
     if st.session_state.signup_stage == "form":
         name = st.text_input("Full Name")
         email = st.text_input("Email")
@@ -252,5 +248,6 @@ elif st.session_state.page == "Contact":
     st.write("Phone: **90195 31192**\n\nEmail: **support@dreamaware.ai**")
 
 st.markdown("<hr><center>© 2025 Dream Aware — Weather-Based Health Advisor</center>", unsafe_allow_html=True)
+
 
 
