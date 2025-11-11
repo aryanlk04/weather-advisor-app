@@ -239,7 +239,7 @@ with tab_signup:
                 st.session_state.pending_user = None
                 st.rerun()
 
-elif st.session_state.page == "About":
+if st.session_state.page == "About":
     st.title("ℹ️ About Dream Aware")
     st.write(
         "Dream Aware is a weather-based health advisory system. It combines real-time "
@@ -252,4 +252,5 @@ elif st.session_state.page == "Contact":
     st.write("Phone: **90195 31192**\n\nEmail: **support@dreamaware.ai**")
 
 st.markdown("<hr><center>© 2025 Dream Aware — Weather-Based Health Advisor</center>", unsafe_allow_html=True)
+
 
