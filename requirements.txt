@@ -3,3 +3,4 @@ bcrypt
 requests
 sendgrid
 pillow
+twilio
