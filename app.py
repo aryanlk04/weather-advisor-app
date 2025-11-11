@@ -162,73 +162,82 @@ if st.session_state.page == "Home":
                 else:
                     st.error(msg)
 
-        # -------- SIGN UP (FORM + OTP) --------
-        with tab_signup:
-            if st.session_state.signup_stage == "form":
-                name = st.text_input("Full Name")
-                email = st.text_input("Email")
-                phone = st.text_input("Phone (E.164, e.g., +9190xxxxxxx)")
-                address = st.text_area("Address")
-                pw = st.text_input("Create Password", type="password")
+       # ---------- SIGN UP (FORM -> OTP) ----------
+with tab_signup:
+    # init stage flags
+    if "signup_stage" not in st.session_state:
+        st.session_state.signup_stage = "form"
+    if "pending_user" not in st.session_state:
+        st.session_state.pending_user = None
 
-                if st.button("Send OTP"):
-                    # basic checks
-                    if not all([name.strip(), email.strip(), phone.strip(), pw.strip()]):
-                        st.warning("Please fill all required fields (name, email, phone, password).")
-                    else:
-                        cur.execute("SELECT 1 FROM users WHERE email=? OR phone=?", (email.strip(), phone.strip()))
-                        if cur.fetchone():
-                            st.error("An account with this email/phone already exists.")
-                        else:
-                            # send verify code
-                            if send_verify_code(phone.strip()):
-                                st.session_state.pending_user = {
-                                    "name": name.strip(),
-                                    "email": email.strip(),
-                                    "phone": phone.strip(),
-                                    "address": address.strip(),
-                                    "password": pw
-                                }
-                                st.session_state.signup_stage = "otp"
-                                st.info(f"OTP sent to {phone}. Please enter it below.")
-                            # else: error already shown
+    if st.session_state.signup_stage == "form":
+        name = st.text_input("Full Name")
+        email = st.text_input("Email")
+        phone = st.text_input("Phone (E.164, e.g., +9190xxxxxxx)")
+        address = st.text_area("Address")
+        pw = st.text_input("Create Password", type="password")
 
-            elif st.session_state.signup_stage == "otp":
-                st.write("Enter the OTP sent to your phone to complete registration.")
-                code = st.text_input("Verification code (6 digits)")
-                cols = st.columns(2)
-                with cols[0]:
-                    if st.button("Verify & Create Account"):
-                        if not code.strip():
-                            st.warning("Enter the OTP.")
-                        else:
-                            pu = st.session_state.pending_user
-                            if not pu:
-                                st.error("No pending signup found. Please start again.")
-                            else:
-                                if check_verify_code(pu["phone"], code):
-                                    # create user
-                                    pw_hash = bcrypt.hashpw(pu["password"].encode(), bcrypt.gensalt())
-                                    cur.execute(
-                                        "INSERT INTO users(name,email,phone,address,password_hash,verified,signup_date) "
-                                        "VALUES (?,?,?,?,?,?,?)",
-                                        (pu["name"], pu["email"], pu["phone"], pu["address"], pw_hash, 1, str(datetime.now()))
-                                    )
-                                    conn.commit()
-                                    st.success("✅ Phone verified & account created! Please login now.")
-                                    # reset stage
-                                    st.session_state.signup_stage = "form"
-                                    st.session_state.pending_user = None
-                                else:
-                                    st.error("Invalid or expired code. Try again.")
-                with cols[1]:
-                    if st.button("Resend OTP"):
-                        pu = st.session_state.pending_user
-                        if pu and send_verify_code(pu["phone"]):
-                            st.info("OTP resent. Please check your messages.")
-                    if st.button("Cancel"):
+        if st.button("Send OTP", key="send_otp_btn"):
+            if not all([name.strip(), email.strip(), phone.strip(), pw.strip()]):
+                st.warning("Please fill all required fields (name, email, phone, password).")
+            else:
+                # check duplicates
+                cur.execute("SELECT 1 FROM users WHERE email=? OR phone=?", (email.strip(), phone.strip()))
+                if cur.fetchone():
+                    st.error("An account with this email/phone already exists.")
+                else:
+                    # send code via Twilio Verify
+                    if send_verify_code(phone.strip()):
+                        # stash user info until OTP is verified
+                        st.session_state.pending_user = {
+                            "name": name.strip(),
+                            "email": email.strip(),
+                            "phone": phone.strip(),
+                            "address": address.strip(),
+                            "password": pw
+                        }
+                        st.session_state.signup_stage = "otp"
+                        st.success(f"OTP sent to {phone}. Please enter it below.")
+                        st.experimental_rerun()   # <-- force UI to show OTP inputs immediately
+
+    elif st.session_state.signup_stage == "otp":
+        st.info(f"Enter the OTP sent to {st.session_state.pending_user['phone']}")
+        code = st.text_input("Verification code (6 digits)", max_chars=6, key="otp_code")
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            if st.button("Verify & Create Account", key="verify_btn"):
+                if not code.strip():
+                    st.warning("Please enter the OTP.")
+                else:
+                    pu = st.session_state.pending_user
+                    if pu and check_verify_code(pu["phone"], code):
+                        pw_hash = bcrypt.hashpw(pu["password"].encode(), bcrypt.gensalt())
+                        cur.execute(
+                            "INSERT INTO users(name,email,phone,address,password_hash,verified,signup_date) "
+                            "VALUES (?,?,?,?,?,?,?)",
+                            (pu["name"], pu["email"], pu["phone"], pu["address"], pw_hash, 1, str(datetime.now()))
+                        )
+                        conn.commit()
+                        st.success("✅ Phone verified & account created! Please log in.")
+                        # reset state
                         st.session_state.signup_stage = "form"
                         st.session_state.pending_user = None
+                        st.rerun()
+                    else:
+                        st.error("Invalid or Expired OTP. Try Again.")
+
+        with c2:
+            if st.button("Resend OTP", key="resend_btn"):
+                pu = st.session_state.pending_user
+                if pu and send_verify_code(pu["phone"]):
+                    st.info("OTP resent. Please check your messages.")
+
+        with c3:
+            if st.button("Cancel", key="cancel_btn"):
+                st.session_state.signup_stage = "form"
+                st.session_state.pending_user = None
+                st.rerun()
 
 elif st.session_state.page == "About":
     st.title("ℹ️ About Dream Aware")
@@ -243,3 +252,4 @@ elif st.session_state.page == "Contact":
     st.write("Phone: **90195 31192**\n\nEmail: **support@dreamaware.ai**")
 
 st.markdown("<hr><center>© 2025 Dream Aware — Weather-Based Health Advisor</center>", unsafe_allow_html=True)
+
