@@ -275,6 +275,7 @@ if st.session_state.page == "Home":
                     st.error(msg)
 
        # ---------- SIGN UP (FORM -> OTP) ----------
+tab_login, tab_signup = st.tabs(["🔑 Login", "🆕 Sign Up"])
 with tab_signup:
     # init stage flags
    
@@ -360,6 +361,7 @@ elif st.session_state.page == "Contact":
     st.write("Phone: **90195 31192**\n\nEmail: **support@dreamaware.ai**")
 
 st.markdown("<hr><center>© 2025 Dream Aware — Weather-Based Lifestyle & Daily Routine Advisor</center>", unsafe_allow_html=True)
+
 
 
 
