@@ -223,7 +223,7 @@ def check_verify_code(phone: str, code: str) -> bool:
 # -------------------- PAGES --------------------
 if st.session_state.page == "Home":
     st.title("🩺 Dream Aware")
-    st.subheader("Weather-Based Health Advisory System")
+    st.subheader("Weather-Based Lifestyle & Daily Routine Advisory System")
 
     if st.session_state.logged_in:
         st.success(f"Welcome back, {st.session_state.email}!")
@@ -350,7 +350,7 @@ with tab_signup:
 if st.session_state.page == "About":
     st.title("ℹ️ About Dream Aware")
     st.write(
-        "Dream Aware is a weather-based health advisory system. It combines real-time "
+        "Dream Aware is aWeather-Based Lifestyle & Daily Routine Advisor system. It combines real-time "
         "weather from OpenWeather with practical health guidance, and includes secure "
         "OTP-verified accounts (Twilio Verify)."
     )
@@ -359,7 +359,8 @@ elif st.session_state.page == "Contact":
     st.title("📞 Contact")
     st.write("Phone: **90195 31192**\n\nEmail: **support@dreamaware.ai**")
 
-st.markdown("<hr><center>© 2025 Dream Aware — Weather-Based Health Advisor</center>", unsafe_allow_html=True)
+st.markdown("<hr><center>© 2025 Dream Aware — Weather-Based Lifestyle & Daily Routine Advisor</center>", unsafe_allow_html=True)
+
 
 
 
